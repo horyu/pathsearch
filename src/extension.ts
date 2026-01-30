@@ -181,7 +181,7 @@ async function searchWithRipgrep(
   }
 
   if (applyTo && applyTo !== '**/*') {
-    if (!/^[\w*.\-/{}，]+$/.test(applyTo)) {
+    if (!/^[\w*.\-/{}，,]+$/.test(applyTo)) {
       console.error(`PathSearch: Invalid file pattern: ${applyTo}`);
       throw new Error('Invalid file pattern');
     }
