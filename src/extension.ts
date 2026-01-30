@@ -222,8 +222,6 @@ async function searchWithRipgrep(
     args.push('--glob', simplifiedPattern);
   }
 
-  args.push(searchQuery);
-
   const searchPaths = searchIn ? (Array.isArray(searchIn) ? searchIn : [searchIn]) : ['.'];
   for (const p of searchPaths) {
     if (p.includes('..') || path.isAbsolute(p)) {
@@ -233,6 +231,8 @@ async function searchWithRipgrep(
   }
 
   const hasGlobPattern = searchPaths.some(p => p.includes('*'));
+  const pathArgs: string[] = [];
+  const globArgs: string[] = [];
 
   if (hasGlobPattern) {
     const expandedPaths: string[] = [];
@@ -255,15 +255,17 @@ async function searchWithRipgrep(
       }
     }
 
-    expandedPaths.forEach(p => args.push(p));
+    expandedPaths.forEach(p => pathArgs.push(p));
     globPatterns.forEach(pattern => {
-      args.push('--glob', pattern);
+      globArgs.push('--glob', pattern);
     });
 
     logInfo(`Using glob patterns: ${globPatterns.join(', ')}`);
   } else {
-    searchPaths.forEach(p => args.push(p));
+    searchPaths.forEach(p => pathArgs.push(p));
   }
+
+  args.push(...globArgs, '--', searchQuery, ...pathArgs);
 
   logInfo(`Executing in ${workspaceRoot}: ${rgPath} ${args.map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
 
