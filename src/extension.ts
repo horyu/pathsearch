@@ -14,6 +14,41 @@ interface TransformConfig {
   searchIn?: string | string[];
 }
 
+let outputChannel: vscode.OutputChannel | undefined;
+
+function initializeOutputChannel(context: vscode.ExtensionContext): void {
+  if (!outputChannel) {
+    outputChannel = vscode.window.createOutputChannel('PathSearch');
+    context.subscriptions.push(outputChannel);
+  }
+}
+
+function formatLogError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+  return String(error);
+}
+
+function appendLogLine(level: 'INFO' | 'WARN' | 'ERROR', message: string, error?: unknown): void {
+  if (!outputChannel) {
+    console[level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : 'log'](`PathSearch: ${message}`, error ?? '');
+    return;
+  }
+
+  const prefix = `[${level}] PathSearch:`;
+  if (error !== undefined) {
+    outputChannel.appendLine(`${prefix} ${message} ${formatLogError(error)}`);
+    return;
+  }
+
+  outputChannel.appendLine(`${prefix} ${message}`);
+}
+
+const logInfo = (message: string): void => appendLogLine('INFO', message);
+const logWarn = (message: string): void => appendLogLine('WARN', message);
+const logError = (message: string, error?: unknown): void => appendLogLine('ERROR', message, error);
+
 function getRelativeFilePath(editor: vscode.TextEditor, workspaceFolder: vscode.WorkspaceFolder): string {
   const filePath = editor.document.uri.fsPath;
   return path.relative(workspaceFolder.uri.fsPath, filePath);
@@ -67,7 +102,7 @@ function getRipgrepPath(): string {
   }
 
   if (!/^[a-zA-Z0-9\-_/.:\\]+$/.test(customPath)) {
-    console.error(`PathSearch: Invalid ripgrep path contains unsafe characters: ${customPath}`);
+    logError(`Invalid ripgrep path contains unsafe characters: ${customPath}`);
     throw new Error('Invalid ripgrep path: contains unsafe characters');
   }
 
@@ -75,7 +110,7 @@ function getRipgrepPath(): string {
     const resolvedPath = path.resolve(customPath);
 
     if (!fs.existsSync(resolvedPath)) {
-      console.error(`PathSearch: ripgrep path does not exist: ${resolvedPath}`);
+      logError(`ripgrep path does not exist: ${resolvedPath}`);
       throw new Error(`ripgrep path does not exist: ${resolvedPath}`);
     }
 
@@ -83,7 +118,7 @@ function getRipgrepPath(): string {
       try {
         fs.accessSync(resolvedPath, fs.constants.X_OK);
       } catch {
-        console.error(`PathSearch: ripgrep path is not executable: ${resolvedPath}`);
+        logError(`ripgrep path is not executable: ${resolvedPath}`);
         throw new Error(`ripgrep path is not executable: ${resolvedPath}`);
       }
     }
@@ -93,7 +128,7 @@ function getRipgrepPath(): string {
     if (error instanceof Error && error.message.includes('PathSearch')) {
       throw error;
     }
-    console.error(`PathSearch: Failed to validate ripgrep path:`, error);
+    logError(`Failed to validate ripgrep path:`, error);
     throw new Error('Failed to validate ripgrep path');
   }
 }
@@ -117,7 +152,7 @@ async function checkRipgrepAvailable(rgPath: string): Promise<boolean> {
       proc.stdout.on('data', (data: Buffer) => {
         output += data.toString();
         if (output.length > maxOutput) {
-          console.error(`PathSearch: ripgrep output exceeded size limit`);
+          logError(`ripgrep output exceeded size limit`);
           proc.kill();
           resolve(false);
         }
@@ -131,9 +166,7 @@ async function checkRipgrepAvailable(rgPath: string): Promise<boolean> {
 
         const isRipgrep = output.toLowerCase().includes('ripgrep');
         if (!isRipgrep) {
-          console.warn(
-            `PathSearch: Command succeeded but output does not contain "ripgrep": ${output.substring(0, 100)}`
-          );
+          logWarn(`Command succeeded but output does not contain "ripgrep": ${output.substring(0, 100)}`);
         }
         resolve(isRipgrep);
       });
@@ -142,7 +175,7 @@ async function checkRipgrepAvailable(rgPath: string): Promise<boolean> {
         resolve(false);
       });
     } catch (error) {
-      console.error(`PathSearch: Failed to check ripgrep:`, error);
+      logError(`Failed to check ripgrep:`, error);
       resolve(false);
     }
   });
@@ -163,7 +196,7 @@ async function searchWithRipgrep(
     return locations;
   }
 
-  console.log(`PathSearch: Using ripgrep for search`);
+  logInfo(`Using ripgrep for search`);
 
   const args: string[] = [
     '--json',
@@ -182,7 +215,7 @@ async function searchWithRipgrep(
 
   if (applyTo && applyTo !== '**/*') {
     if (!/^[\w*.\-/{}，,]+$/.test(applyTo)) {
-      console.error(`PathSearch: Invalid file pattern: ${applyTo}`);
+      logError(`Invalid file pattern: ${applyTo}`);
       throw new Error('Invalid file pattern');
     }
     const simplifiedPattern = applyTo.replace(/^\*\*\//, '');
@@ -194,7 +227,7 @@ async function searchWithRipgrep(
   const searchPaths = searchIn ? (Array.isArray(searchIn) ? searchIn : [searchIn]) : ['.'];
   for (const p of searchPaths) {
     if (p.includes('..') || path.isAbsolute(p)) {
-      console.error(`PathSearch: Invalid search path: ${p}`);
+      logError(`Invalid search path: ${p}`);
       throw new Error('Invalid search path');
     }
   }
@@ -227,14 +260,12 @@ async function searchWithRipgrep(
       args.push('--glob', pattern);
     });
 
-    console.log(`PathSearch: Using glob patterns: ${globPatterns.join(', ')}`);
+    logInfo(`Using glob patterns: ${globPatterns.join(', ')}`);
   } else {
     searchPaths.forEach(p => args.push(p));
   }
 
-  console.log(
-    `PathSearch: Executing in ${workspaceRoot}: ${rgPath} ${args.map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`
-  );
+  logInfo(`Executing in ${workspaceRoot}: ${rgPath} ${args.map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
 
   return new Promise((resolve, reject) => {
     const proc: ChildProcess = spawn(rgPath, args, {
@@ -264,19 +295,19 @@ async function searchWithRipgrep(
     proc.stderr.on('data', (data: Buffer) => {
       const chunk = data.toString();
       stderr += chunk;
-      console.error(`PathSearch: ripgrep stderr: ${chunk}`);
+      logError(`ripgrep stderr: ${chunk}`);
     });
 
     proc.on('close', (code: number | null) => {
       if (code !== 0 && code !== 1) {
-        console.error(`PathSearch: Ripgrep exited with code ${code}`);
-        console.error(`PathSearch: stderr: ${stderr.substring(0, 200)}`);
+        logError(`Ripgrep exited with code ${code}`);
+        logError(`stderr: ${stderr.substring(0, 200)}`);
         reject(new Error(`Ripgrep search failed`));
         return;
       }
 
       if (code === 1) {
-        console.log(`PathSearch: Ripgrep found no matches`);
+        logInfo(`Ripgrep found no matches`);
         resolve(locations);
         return;
       }
@@ -285,7 +316,7 @@ async function searchWithRipgrep(
         .trim()
         .split('\n')
         .filter(line => line.length > 0);
-      console.log(`PathSearch: Parsing ${lines.length} lines of ripgrep output`);
+      logInfo(`Parsing ${lines.length} lines of ripgrep output`);
 
       for (const line of lines) {
         if (locations.length >= maxResults) {
@@ -300,14 +331,14 @@ async function searchWithRipgrep(
 
             const relativePath = data.path.text;
             if (relativePath.includes('..') || path.isAbsolute(relativePath)) {
-              console.warn(`PathSearch: Suspicious path detected: ${relativePath}`);
+              logWarn(`Suspicious path detected: ${relativePath}`);
               continue;
             }
 
             const filePath = path.resolve(workspaceRoot, relativePath);
 
             if (!filePath.startsWith(workspaceRoot)) {
-              console.warn(`PathSearch: Path outside workspace: ${filePath}`);
+              logWarn(`Path outside workspace: ${filePath}`);
               continue;
             }
 
@@ -326,12 +357,12 @@ async function searchWithRipgrep(
         }
       }
 
-      console.log(`PathSearch: Ripgrep found ${locations.length} matches`);
+      logInfo(`Ripgrep found ${locations.length} matches`);
       resolve(locations);
     });
 
     proc.on('error', (error: Error) => {
-      console.error(`PathSearch: Failed to spawn ripgrep:`, error.message);
+      logError(`Failed to spawn ripgrep:`, error.message);
       reject(new Error('Failed to execute ripgrep'));
     });
   });
@@ -344,7 +375,7 @@ async function searchInWorkspace(
   applyTo?: string,
   searchIn?: string | string[]
 ): Promise<vscode.Location[]> {
-  console.log(`PathSearch: Starting search for "${searchQuery}" (regex: ${isRegex}, pattern: ${applyTo || '**/*'})`);
+  logInfo(`Starting search for "${searchQuery}" (regex: ${isRegex}, pattern: ${applyTo || '**/*'})`);
 
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   const workspaceRoot = workspaceFolder?.uri.fsPath;
@@ -385,6 +416,7 @@ async function searchInWorkspace(
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  initializeOutputChannel(context);
   try {
     const rgPath = getRipgrepPath();
     checkRipgrepAvailable(rgPath)
@@ -408,13 +440,13 @@ export function activate(context: vscode.ExtensionContext) {
         }
       })
       .catch(error => {
-        console.error('PathSearch: Failed to check ripgrep on activation:', error);
+        logError('Failed to check ripgrep on activation:', error);
         vscode.window.showErrorMessage(
           `PathSearch: ${error instanceof Error ? error.message : 'Failed to validate ripgrep path'}`
         );
       });
   } catch (error) {
-    console.error('PathSearch: Failed to get ripgrep path on activation:', error);
+    logError('Failed to get ripgrep path on activation:', error);
     vscode.window.showErrorMessage(
       `PathSearch: ${error instanceof Error ? error.message : 'Failed to validate ripgrep path'}`
     );
@@ -479,7 +511,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Searching for: ${searchQuery}`);
         await executeSearch(searchQuery, selectedTransform.searchAsRegex || false);
       } catch (error) {
-        console.error(`PathSearch: Transform failed:`, error);
+        logError(`Transform failed:`, error);
         vscode.window.showErrorMessage('Transform failed. Please check your configuration.');
       }
     })
@@ -541,7 +573,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       try {
         const searchQuery = transformPath(selectedTransform, relativeFilePath);
-        console.log(`PathSearch: Transformed query: ${searchQuery}, regex: ${selectedTransform.searchAsRegex}`);
+        logInfo(`Transformed query: ${searchQuery}, regex: ${selectedTransform.searchAsRegex}`);
 
         vscode.window.showInformationMessage(`Searching for: ${searchQuery}`);
 
@@ -554,7 +586,7 @@ export function activate(context: vscode.ExtensionContext) {
           selectedTransform.searchIn
         );
 
-        console.log(`PathSearch: Found ${locations.length} locations`);
+        logInfo(`Found ${locations.length} locations`);
 
         if (locations.length === 0) {
           vscode.window.showWarningMessage(`No matches found for: ${searchQuery}`);
@@ -564,7 +596,7 @@ export function activate(context: vscode.ExtensionContext) {
         // 現在のカーソル位置を取得
         const position = editor.selection.active;
 
-        console.log(`PathSearch: Showing peek view at position ${position.line}:${position.character}`);
+        logInfo(`Showing peek view at position ${position.line}:${position.character}`);
 
         // Peekビューで結果を表示
         await vscode.commands.executeCommand('editor.action.showReferences', editor.document.uri, position, locations);
@@ -575,7 +607,7 @@ export function activate(context: vscode.ExtensionContext) {
           : `Found ${locations.length} match(es)`;
         vscode.window.showInformationMessage(message);
       } catch (error) {
-        console.error(`PathSearch: Error in peekSearch:`, error);
+        logError(`Error in peekSearch:`, error);
         vscode.window.showErrorMessage('Search failed. Please check the console for details.');
       }
     })
@@ -625,7 +657,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Searching for: ${searchQuery}`);
         await executeSearch(searchQuery, selected.transform.searchAsRegex || false);
       } catch (error) {
-        console.error(`PathSearch: Transform failed:`, error);
+        logError(`Transform failed:`, error);
         vscode.window.showErrorMessage('Transform failed. Please check your configuration.');
       }
     })
