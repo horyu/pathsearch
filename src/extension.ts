@@ -170,7 +170,7 @@ async function searchWithRipgrep(
     '--line-number',
     '--column',
     '--max-count',
-    '100',
+    String(maxResults),
     '--max-filesize',
     '10M',
     '--stats'
