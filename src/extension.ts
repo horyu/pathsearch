@@ -170,7 +170,7 @@ async function searchWithRipgrep(
     '--line-number',
     '--column',
     '--max-count',
-    '100',
+    String(maxResults),
     '--max-filesize',
     '10M',
     '--stats'
@@ -181,7 +181,7 @@ async function searchWithRipgrep(
   }
 
   if (applyTo && applyTo !== '**/*') {
-    if (!/^[\w*.\-/{}，]+$/.test(applyTo)) {
+    if (!/^[\w*.\-/{}，,]+$/.test(applyTo)) {
       console.error(`PathSearch: Invalid file pattern: ${applyTo}`);
       throw new Error('Invalid file pattern');
     }
