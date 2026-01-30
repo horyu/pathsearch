@@ -1,0 +1,179 @@
+{
+  "name": "pathsearch",
+  "displayName": "PathSearch",
+  "description": "Transform file paths to search queries with customizable patterns",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "WTFPL",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/horyu/pathsearch"
+  },
+  "engines": {
+    "vscode": "^1.75.0",
+    "node": ">=18.0.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "search",
+    "find",
+    "usage",
+    "reference",
+    "transform",
+    "find usages",
+    "path alias",
+    "monorepo",
+    "template",
+    "peek references",
+    "custom search",
+    "regex",
+    "ripgrep"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "type": "module",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pathsearch.search",
+        "title": "PathSearch: Find Usages"
+      },
+      {
+        "command": "pathsearch.searchWithPicker",
+        "title": "PathSearch: Find Usages..."
+      },
+      {
+        "command": "pathsearch.peekSearch",
+        "title": "PathSearch: Peek Usages"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "PathSearch",
+      "properties": {
+        "pathsearch.transforms": {
+          "type": "array",
+          "default": [
+            {
+              "name": "Example: Template File",
+              "applyTo": "**/*.{twig,blade.php,ejs,hbs}",
+              "extractFrom": ".*views/(.*)",
+              "searchFor": "@YourNamespace/$1",
+              "description": "Search for template file usage (customize @YourNamespace)"
+            }
+          ],
+          "description": "Transform patterns for different file types",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "extractFrom",
+              "searchFor"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Display name for this transform"
+              },
+              "applyTo": {
+                "type": "string",
+                "description": "Glob pattern to match files (e.g., **/*.tsx)"
+              },
+              "extractFrom": {
+                "type": "string",
+                "description": "Regular expression to match against workspace-relative file path"
+              },
+              "searchFor": {
+                "type": "string",
+                "description": "Replacement pattern (use $1, $2 for capture groups)"
+              },
+              "description": {
+                "type": "string",
+                "description": "Optional description shown in picker"
+              },
+              "searchAsRegex": {
+                "type": "boolean",
+                "default": false,
+                "description": "Use the result as a regex pattern in search"
+              },
+              "searchIn": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "description": "Directory to search in (e.g., 'src/')"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Directories to search in (e.g., ['src/', 'app/'])"
+                  }
+                ],
+                "description": "Limit search to specific directories. Omit to search entire workspace."
+              }
+            }
+          }
+        },
+        "pathsearch.autoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically select transform based on current file pattern"
+        },
+        "pathsearch.maxResults": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of search results to display in Peek view"
+        },
+        "pathsearch.ripgrepPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom path to ripgrep executable. Leave empty to use ripgrep from PATH."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "pathsearch.peekSearch",
+        "key": "ctrl+shift+u",
+        "mac": "cmd+shift+u",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "build:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "vscode:prepublish": "pnpm run typecheck && pnpm run lint && pnpm run build:base --minify",
+    "compile": "pnpm run build:base --sourcemap",
+    "watch": "pnpm run build:base --sourcemap --watch",
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "minimatch": "^10.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.55.0",
+    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/parser": "^8.53.1",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.53.1"
+  }
+}
