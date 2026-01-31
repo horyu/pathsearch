@@ -3,6 +3,8 @@
     "module": "commonjs",
     "target": "ES2020",
     "outDir": "out",
+    // esbuildでビルドするためtscの出力は不要
+    "noEmit": true,
     "lib": ["ES2020"],
     "sourceMap": true,
     "rootDir": "src",
@@ -11,5 +13,5 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "exclude": ["node_modules", "src/**/*.test.ts"]
 }

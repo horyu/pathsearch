@@ -248,13 +248,14 @@
     "vscode:prepublish": "pnpm run typecheck && pnpm run lint && pnpm run build:base --minify",
     "compile": "pnpm run build:base --sourcemap",
     "watch": "pnpm run build:base --sourcemap --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc && tsc -p tsconfig.test.json",
     "typecheck:watch": "tsc --noEmit --watch",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "package": "npx @vscode/vsce package --no-dependencies"
+    "package": "npx @vscode/vsce package --no-dependencies",
+    "test": "node --test --test-isolation=none --experimental-strip-types"
   },
   "dependencies": {
     "minimatch": "^10.1.1"

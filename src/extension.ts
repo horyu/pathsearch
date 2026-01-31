@@ -1,33 +1,11 @@
 import { spawn, type ChildProcess } from 'child_process';
 import * as fs from 'fs';
-import { minimatch } from 'minimatch';
 import * as path from 'path';
 import * as vscode from 'vscode';
-
-interface TransformConfig {
-  extractFrom: string;
-  searchFor: string;
-  searchAsRegex?: boolean;
-  searchScope?: string | string[];
-  filePattern?: string | string[];
-}
-
-type RelativeMatchTarget = 'parentDir' | 'fileName' | 'fileStem';
-
-interface RelativeSearchConfig {
-  matchTarget: RelativeMatchTarget;
-  maxDepth?: number;
-  searchScope?: string | string[];
-  filePattern?: string | string[];
-}
-
-interface RuleConfig {
-  name: string;
-  match: string;
-  maxResults?: number;
-  transforms?: TransformConfig[];
-  relative?: RelativeSearchConfig;
-}
+import { getMatchingRules } from './lib/rules';
+import { buildRelativeSearchQuery, isRelativeMatchTarget, isRelativeReferenceMatch } from './lib/relativeSearch';
+import { transformPath } from './lib/transformPath';
+import type { RelativeSearchConfig, RuleConfig } from './lib/types';
 
 let outputChannel: vscode.OutputChannel | undefined;
 
@@ -67,107 +45,6 @@ const logError = (message: string, error?: unknown): void => appendLogLine('ERRO
 function getRelativeFilePath(editor: vscode.TextEditor, workspaceFolder: vscode.WorkspaceFolder): string {
   const filePath = editor.document.uri.fsPath;
   return path.relative(workspaceFolder.uri.fsPath, filePath);
-}
-
-function transformPath(config: TransformConfig, relativeFilePath: string): string {
-  const targetText = relativeFilePath.replace(/\\/g, '/');
-
-  try {
-    const regex = new RegExp(config.extractFrom);
-    const match = targetText.match(regex);
-
-    if (!match) {
-      throw new Error(`Pattern "${config.extractFrom}" did not match "${targetText}"`);
-    }
-
-    let result = config.searchFor;
-    match.forEach((group, index) => {
-      result = result.replace(new RegExp(`\\$${index}`, 'g'), group || '');
-    });
-
-    return result;
-  } catch (error) {
-    throw new Error(`Transform failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function isRelativeMatchTarget(value: string): value is RelativeMatchTarget {
-  return value === 'parentDir' || value === 'fileName' || value === 'fileStem';
-}
-
-function getRelativeTargetToken(relativeFilePath: string, matchTarget: RelativeMatchTarget): string {
-  const normalizedPath = relativeFilePath.replace(/\\/g, '/');
-  const directory = path.posix.dirname(normalizedPath);
-  switch (matchTarget) {
-    case 'parentDir':
-      return directory === '.' ? '' : path.posix.basename(directory);
-    case 'fileName':
-      return path.posix.basename(normalizedPath);
-    case 'fileStem':
-      return path.posix.basename(normalizedPath, path.posix.extname(normalizedPath));
-  }
-}
-
-function buildRelativeSearchQuery(relativeFilePath: string, config: RelativeSearchConfig): string {
-  const token = getRelativeTargetToken(relativeFilePath, config.matchTarget);
-  if (!token) {
-    throw new Error('Relative match target is empty');
-  }
-  const escapedToken = escapeRegex(token);
-  return '(?:\\.\\.?/)+[^"\'`\\s]*' + escapedToken + '[^"\'`\\s]*';
-}
-
-function normalizeFsPath(value: string): string {
-  const resolved = path.resolve(value);
-  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
-}
-
-function isRelativeReferenceMatch(
-  matchText: string,
-  matchFilePath: string,
-  targetFilePath: string,
-  config: RelativeSearchConfig
-): boolean {
-  const cleaned = matchText.trim();
-  if (!cleaned.startsWith('./') && !cleaned.startsWith('../')) {
-    return false;
-  }
-
-  if (config.maxDepth !== undefined && config.maxDepth !== null) {
-    const depth = cleaned.match(/\.\.\//g)?.length ?? 0;
-    if (depth > config.maxDepth) {
-      return false;
-    }
-  }
-
-  const resolvedMatch = normalizeFsPath(path.resolve(path.dirname(matchFilePath), cleaned));
-  const resolvedTarget = normalizeFsPath(targetFilePath);
-
-  switch (config.matchTarget) {
-    case 'parentDir':
-      return resolvedMatch === normalizeFsPath(path.dirname(targetFilePath));
-    case 'fileName':
-      return resolvedMatch === resolvedTarget;
-    case 'fileStem': {
-      const ext = path.extname(targetFilePath);
-      const targetNoExt = ext ? normalizeFsPath(targetFilePath.slice(0, -ext.length)) : resolvedTarget;
-      return resolvedMatch === resolvedTarget || resolvedMatch === targetNoExt;
-    }
-  }
-}
-
-function getMatchingRules(rules: RuleConfig[], relativePath: string): RuleConfig[] {
-  const normalizedPath = relativePath.replace(/\\/g, '/');
-  return rules.filter(rule => {
-    if (!rule.match) {
-      return false;
-    }
-    return minimatch(normalizedPath, rule.match);
-  });
 }
 
 function getRipgrepPath(): string {
