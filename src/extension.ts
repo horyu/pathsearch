@@ -5,13 +5,18 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 interface TransformConfig {
-  name: string;
-  applyTo?: string;
   extractFrom: string;
   searchFor: string;
-  description?: string;
   searchAsRegex?: boolean;
-  searchIn?: string | string[];
+  searchScope?: string | string[];
+  filePattern?: string | string[];
+}
+
+interface RuleConfig {
+  name: string;
+  match: string;
+  maxResults?: number;
+  transforms: TransformConfig[];
 }
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -55,7 +60,7 @@ function getRelativeFilePath(editor: vscode.TextEditor, workspaceFolder: vscode.
 }
 
 function transformPath(config: TransformConfig, relativeFilePath: string): string {
-  const targetText = relativeFilePath;
+  const targetText = relativeFilePath.replace(/\\/g, '/');
 
   try {
     const regex = new RegExp(config.extractFrom);
@@ -76,20 +81,13 @@ function transformPath(config: TransformConfig, relativeFilePath: string): strin
   }
 }
 
-function getMatchingTransforms(configs: TransformConfig[], relativePath: string): TransformConfig[] {
-  return configs.filter(config => {
-    if (!config.applyTo) {
-      return true;
+function getMatchingRules(rules: RuleConfig[], relativePath: string): RuleConfig[] {
+  const normalizedPath = relativePath.replace(/\\/g, '/');
+  return rules.filter(rule => {
+    if (!rule.match) {
+      return false;
     }
-    return minimatch(relativePath, config.applyTo);
-  });
-}
-
-async function executeSearch(searchQuery: string, isRegex: boolean = false): Promise<void> {
-  await vscode.commands.executeCommand('workbench.action.findInFiles', {
-    query: searchQuery,
-    triggerSearch: true,
-    isRegex: isRegex
+    return minimatch(normalizedPath, rule.match);
   });
 }
 
@@ -186,9 +184,9 @@ async function searchWithRipgrep(
   isRegex: boolean,
   maxResults: number,
   rgPath: string,
-  applyTo?: string,
   workspaceRoot?: string,
-  searchIn?: string | string[]
+  searchScope?: string | string[],
+  filePattern?: string | string[]
 ): Promise<vscode.Location[]> {
   const locations: vscode.Location[] = [];
 
@@ -213,59 +211,35 @@ async function searchWithRipgrep(
     args.push('--fixed-strings');
   }
 
-  if (applyTo && applyTo !== '**/*') {
-    if (!/^[\w*.\-/{}，,]+$/.test(applyTo)) {
-      logError(`Invalid file pattern: ${applyTo}`);
-      throw new Error('Invalid file pattern');
-    }
-    const simplifiedPattern = applyTo.replace(/^\*\*\//, '');
-    args.push('--glob', simplifiedPattern);
-  }
-
-  const searchPaths = searchIn ? (Array.isArray(searchIn) ? searchIn : [searchIn]) : ['.'];
+  const searchPaths = searchScope
+    ? (Array.isArray(searchScope) ? searchScope : [searchScope]).map(scope => (scope === '' ? '.' : scope))
+    : ['.'];
   for (const p of searchPaths) {
-    if (p.includes('..') || path.isAbsolute(p)) {
+    if (p.includes('..') || path.isAbsolute(p) || p.includes('*')) {
       logError(`Invalid search path: ${p}`);
       throw new Error('Invalid search path');
     }
   }
 
-  const hasGlobPattern = searchPaths.some(p => p.includes('*'));
-  const pathArgs: string[] = [];
-  const globArgs: string[] = [];
-
-  if (hasGlobPattern) {
-    const expandedPaths: string[] = [];
-    const globPatterns: string[] = [];
-
-    for (const p of searchPaths) {
-      if (p.includes('*')) {
-        const parts = p.split('*');
-        const basePath = parts[0];
-        const suffix = parts.slice(1).join('*');
-
-        if (!expandedPaths.includes(basePath)) {
-          expandedPaths.push(basePath);
-        }
-
-        const globPattern = '*' + suffix + (suffix.endsWith('/') ? '**' : '/**');
-        globPatterns.push(globPattern);
-      } else {
-        expandedPaths.push(p);
-      }
+  const filePatterns = filePattern ? (Array.isArray(filePattern) ? filePattern : [filePattern]) : [];
+  for (const pattern of filePatterns) {
+    if (pattern.includes('--')) {
+      logError(`Invalid file pattern contains "--": ${pattern}`);
+      throw new Error('Invalid file pattern');
     }
-
-    expandedPaths.forEach(p => pathArgs.push(p));
-    globPatterns.forEach(pattern => {
-      globArgs.push('--glob', pattern);
-    });
-
-    logInfo(`Using glob patterns: ${globPatterns.join(', ')}`);
-  } else {
-    searchPaths.forEach(p => pathArgs.push(p));
+    if (!/^[\w*.\-/{}!,]+$/.test(pattern)) {
+      logError(`Invalid file pattern: ${pattern}`);
+      throw new Error('Invalid file pattern');
+    }
   }
 
-  args.push(...globArgs, '--', searchQuery, ...pathArgs);
+  const globArgs: string[] = [];
+
+  filePatterns.forEach(pattern => {
+    globArgs.push('--glob', pattern);
+  });
+
+  args.push(...globArgs, '--', searchQuery, ...searchPaths);
 
   logInfo(`Executing in ${workspaceRoot}: ${rgPath} ${args.map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
 
@@ -374,10 +348,10 @@ async function searchInWorkspace(
   searchQuery: string,
   isRegex: boolean = false,
   maxResults: number = 100,
-  applyTo?: string,
-  searchIn?: string | string[]
+  searchScope?: string | string[],
+  filePattern?: string | string[]
 ): Promise<vscode.Location[]> {
-  logInfo(`Starting search for "${searchQuery}" (regex: ${isRegex}, pattern: ${applyTo || '**/*'})`);
+  logInfo(`Starting search for "${searchQuery}" (regex: ${isRegex})`);
 
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   const workspaceRoot = workspaceFolder?.uri.fsPath;
@@ -414,7 +388,118 @@ async function searchInWorkspace(
     throw new Error('ripgrep not available');
   }
 
-  return await searchWithRipgrep(searchQuery, isRegex, maxResults, rgPath, applyTo, workspaceRoot, searchIn);
+  return await searchWithRipgrep(searchQuery, isRegex, maxResults, rgPath, workspaceRoot, searchScope, filePattern);
+}
+
+async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultiple: boolean }): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showErrorMessage('No active editor');
+    return;
+  }
+
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('No workspace folder open');
+    return;
+  }
+
+  const config = vscode.workspace.getConfiguration('pathsearch');
+  const rules = config.get<RuleConfig[]>('rules', []);
+  if (rules.length === 0) {
+    vscode.window.showWarningMessage('No rules configured. Please add rules in settings.');
+    return;
+  }
+
+  const relativeFilePath = getRelativeFilePath(editor, workspaceFolder);
+  const matchingRules = getMatchingRules(rules, relativeFilePath);
+
+  if (matchingRules.length === 0) {
+    vscode.window.showWarningMessage(`No rule matches "${relativeFilePath}"`);
+    return;
+  }
+
+  let selectedRule: RuleConfig;
+  const shouldShowPicker = options.forcePicker || (matchingRules.length > 1 && options.showPickerOnMultiple);
+  if (shouldShowPicker) {
+    const picks = matchingRules.map(rule => ({
+      label: rule.name,
+      detail: `Pattern: ${rule.match}`,
+      rule
+    }));
+
+    const selected = await vscode.window.showQuickPick(picks, {
+      placeHolder: 'Select rule'
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    selectedRule = selected.rule;
+  } else {
+    selectedRule = matchingRules[0];
+  }
+
+  if (!selectedRule.transforms || selectedRule.transforms.length === 0) {
+    vscode.window.showWarningMessage('No transforms configured in the selected rule.');
+    return;
+  }
+
+  const maxResults = selectedRule.maxResults ?? config.get<number>('maxResults', 100);
+  const locations: vscode.Location[] = [];
+  const errors: string[] = [];
+
+  for (const transform of selectedRule.transforms) {
+    const remaining = maxResults - locations.length;
+    if (remaining <= 0) {
+      break;
+    }
+
+    let searchQuery: string;
+    try {
+      searchQuery = transformPath(transform, relativeFilePath);
+    } catch (error) {
+      logError('Transform failed:', error);
+      errors.push(error instanceof Error ? error.message : String(error));
+      continue;
+    }
+
+    const useRegex = transform.searchAsRegex || false;
+    logInfo(`Transformed query: ${searchQuery}, regex: ${useRegex}`);
+
+    try {
+      const matches = await searchInWorkspace(
+        searchQuery,
+        useRegex,
+        remaining,
+        transform.searchScope,
+        transform.filePattern
+      );
+      locations.push(...matches);
+    } catch (error) {
+      logError('Search failed:', error);
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  if (locations.length === 0) {
+    if (errors.length > 0) {
+      vscode.window.showErrorMessage('Search failed. See Output \u2192 PathSearch for details.');
+    } else {
+      vscode.window.showWarningMessage('No matches found.');
+    }
+    return;
+  }
+
+  const position = editor.selection.active;
+  await vscode.commands.executeCommand('editor.action.showReferences', editor.document.uri, position, locations);
+
+  const limitReached = locations.length >= maxResults;
+  const message = limitReached
+    ? `Found ${locations.length}+ match(es) (limit reached)`
+    : `Found ${locations.length} match(es)`;
+  vscode.window.showInformationMessage(message);
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -454,214 +539,19 @@ export function activate(context: vscode.ExtensionContext) {
     );
   }
 
-  // Find Usages: 検索パネルで結果を表示
+  // Find References: respects showPickerOnMultiple
   context.subscriptions.push(
     vscode.commands.registerCommand('pathsearch.search', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showErrorMessage('No active editor');
-        return;
-      }
-
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
-      }
-
       const config = vscode.workspace.getConfiguration('pathsearch');
-      const transforms = config.get<TransformConfig[]>('transforms', []);
-      const autoDetect = config.get<boolean>('autoDetect', true);
-
-      if (transforms.length === 0) {
-        vscode.window.showWarningMessage('No transforms configured. Please add transforms in settings.');
-        return;
-      }
-
-      const relativeFilePath = getRelativeFilePath(editor, workspaceFolder);
-      const matchingTransforms = getMatchingTransforms(transforms, relativeFilePath);
-
-      if (matchingTransforms.length === 0) {
-        vscode.window.showWarningMessage(`No transform pattern matches "${relativeFilePath}"`);
-        return;
-      }
-
-      let selectedTransform: TransformConfig;
-
-      if (autoDetect && matchingTransforms.length === 1) {
-        selectedTransform = matchingTransforms[0];
-      } else {
-        const picks = matchingTransforms.map(t => ({
-          label: t.name,
-          description: t.description || `${t.extractFrom} → ${t.searchFor}`,
-          transform: t
-        }));
-
-        const selected = await vscode.window.showQuickPick(picks, {
-          placeHolder: 'Select transform pattern'
-        });
-
-        if (!selected) {
-          return;
-        }
-
-        selectedTransform = selected.transform;
-      }
-
-      try {
-        const searchQuery = transformPath(selectedTransform, relativeFilePath);
-        vscode.window.showInformationMessage(`Searching for: ${searchQuery}`);
-        await executeSearch(searchQuery, selectedTransform.searchAsRegex || false);
-      } catch (error) {
-        logError(`Transform failed:`, error);
-        vscode.window.showErrorMessage('Transform failed. Please check your configuration.');
-      }
+      const showPickerOnMultiple = config.get<boolean>('showPickerOnMultiple', false);
+      await runRuleSearch({ forcePicker: false, showPickerOnMultiple });
     })
   );
 
-  // Peek Usages (メインコマンド): Peekビューで結果を表示
-  context.subscriptions.push(
-    vscode.commands.registerCommand('pathsearch.peekSearch', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showErrorMessage('No active editor');
-        return;
-      }
-
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
-      }
-
-      const config = vscode.workspace.getConfiguration('pathsearch');
-      const transforms = config.get<TransformConfig[]>('transforms', []);
-      const autoDetect = config.get<boolean>('autoDetect', true);
-
-      if (transforms.length === 0) {
-        vscode.window.showWarningMessage('No transforms configured. Please add transforms in settings.');
-        return;
-      }
-
-      const relativeFilePath = getRelativeFilePath(editor, workspaceFolder);
-      const matchingTransforms = getMatchingTransforms(transforms, relativeFilePath);
-
-      if (matchingTransforms.length === 0) {
-        vscode.window.showWarningMessage(`No transform pattern matches "${relativeFilePath}"`);
-        return;
-      }
-
-      let selectedTransform: TransformConfig;
-
-      if (autoDetect && matchingTransforms.length === 1) {
-        selectedTransform = matchingTransforms[0];
-      } else {
-        const picks = matchingTransforms.map(t => ({
-          label: t.name,
-          description: t.description || `${t.extractFrom} → ${t.searchFor}`,
-          transform: t
-        }));
-
-        const selected = await vscode.window.showQuickPick(picks, {
-          placeHolder: 'Select transform pattern'
-        });
-
-        if (!selected) {
-          return;
-        }
-
-        selectedTransform = selected.transform;
-      }
-
-      try {
-        const searchQuery = transformPath(selectedTransform, relativeFilePath);
-        logInfo(`Transformed query: ${searchQuery}, regex: ${selectedTransform.searchAsRegex}`);
-
-        vscode.window.showInformationMessage(`Searching for: ${searchQuery}`);
-
-        const maxResults = config.get<number>('maxResults', 100);
-        const locations = await searchInWorkspace(
-          searchQuery,
-          selectedTransform.searchAsRegex || false,
-          maxResults,
-          selectedTransform.applyTo,
-          selectedTransform.searchIn
-        );
-
-        logInfo(`Found ${locations.length} locations`);
-
-        if (locations.length === 0) {
-          vscode.window.showWarningMessage(`No matches found for: ${searchQuery}`);
-          return;
-        }
-
-        // 現在のカーソル位置を取得
-        const position = editor.selection.active;
-
-        logInfo(`Showing peek view at position ${position.line}:${position.character}`);
-
-        // Peekビューで結果を表示
-        await vscode.commands.executeCommand('editor.action.showReferences', editor.document.uri, position, locations);
-
-        const limitReached = locations.length >= maxResults;
-        const message = limitReached
-          ? `Found ${locations.length}+ match(es) (limit reached)`
-          : `Found ${locations.length} match(es)`;
-        vscode.window.showInformationMessage(message);
-      } catch (error) {
-        logError(`Error in peekSearch:`, error);
-        vscode.window.showErrorMessage('Search failed. Please check the console for details.');
-      }
-    })
-  );
-
-  // Find Usages...: 常にパターンピッカーを表示
+  // Find References...: always show picker
   context.subscriptions.push(
     vscode.commands.registerCommand('pathsearch.searchWithPicker', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showErrorMessage('No active editor');
-        return;
-      }
-
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
-      }
-
-      const config = vscode.workspace.getConfiguration('pathsearch');
-      const transforms = config.get<TransformConfig[]>('transforms', []);
-
-      if (transforms.length === 0) {
-        vscode.window.showWarningMessage('No transforms configured. Please add transforms in settings.');
-        return;
-      }
-
-      const relativeFilePath = getRelativeFilePath(editor, workspaceFolder);
-      const picks = transforms.map(t => ({
-        label: t.name,
-        description: t.description || `${t.extractFrom} → ${t.searchFor}`,
-        detail: t.applyTo ? `Pattern: ${t.applyTo}` : 'No pattern filter',
-        transform: t
-      }));
-
-      const selected = await vscode.window.showQuickPick(picks, {
-        placeHolder: 'Select transform pattern'
-      });
-
-      if (!selected) {
-        return;
-      }
-
-      try {
-        const searchQuery = transformPath(selected.transform, relativeFilePath);
-        vscode.window.showInformationMessage(`Searching for: ${searchQuery}`);
-        await executeSearch(searchQuery, selected.transform.searchAsRegex || false);
-      } catch (error) {
-        logError(`Transform failed:`, error);
-        vscode.window.showErrorMessage('Transform failed. Please check your configuration.');
-      }
+      await runRuleSearch({ forcePicker: true, showPickerOnMultiple: true });
     })
   );
 }

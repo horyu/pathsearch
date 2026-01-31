@@ -9,7 +9,7 @@
 ## 機能
 
 - **パターンベースのファイル変換**: 正規表現パターンを定義してファイルパスを検索クエリに変換
-- **Peek Usages**: 現在のファイルを離れずにインラインPeekビューで検索結果を表示
+- **インラインPeek結果**: 現在のファイルを離れずにPeekビューで検索結果を表示
 - **ripgrepによる超高速検索**: 超高速ripgrepで動作（必須）
 - **自動検出**: ファイルタイプに基づいて適切なパターンを自動選択
 - **1つのファイルタイプに複数のパターン**: 同じファイルに対して異なる検索戦略をサポート
@@ -23,27 +23,33 @@ ripgrepがカスタムの場所にインストールされている場合は、�
 
 ## 使い方
 
-### 1. 変換パターンの設定
+### 1. 検索ルールの設定
 
-`.vscode/settings.json` に変換パターンを追加します:
+`.vscode/settings.json` に検索ルールを追加します:
 
 ```json
 {
-  "pathsearch.transforms": [
+  "pathsearch.rules": [
     {
-      "name": "Example: Template File",
-      "applyTo": "**/*.{twig,blade.php,ejs,hbs}",
-      "extractFrom": ".*views/(.*)",
-      "searchFor": "@YourNamespace/$1",
-      "description": "テンプレートファイルの使用箇所を検索（@YourNamespaceをカスタマイズ）"
+      "name": "Template File",
+      "match": "**/*.{twig,blade.php,ejs,hbs}",
+      "transforms": [
+        {
+          "extractFrom": ".*views/(.*)",
+          "searchFor": "@YourNamespace/$1"
+        }
+      ]
     },
     {
       "name": "React Component - Import",
-      "applyTo": "**/*.tsx",
-      "extractFrom": ".*/components/(.*)\\.tsx$",
-      "searchFor": "import.*from ['\"].*/$1['\"]",
-      "searchAsRegex": true,
-      "description": "Reactコンポーネントのインポートを検索"
+      "match": "**/*.tsx",
+      "transforms": [
+        {
+          "extractFrom": ".*/components/(.*)\\.tsx$",
+          "searchFor": "import.*from ['\"].*/$1['\"]",
+          "searchAsRegex": true
+        }
+      ]
     }
   ]
 }
@@ -51,42 +57,55 @@ ripgrepがカスタムの場所にインストールされている場合は、�
 
 ### 2. 使用箇所の検索
 
-#### Peek Usages（インライン結果）
+#### インライン結果（Peek）
 
 - **キーボードショートカット**: `Ctrl+Shift+U`（Windows/Linux）または `Cmd+Shift+U`（Mac）
-- **コマンドパレット**: `PathSearch: Peek Usages`
+- **コマンドパレット**: `PathSearch: Find References`
 - 現在のカーソル位置にインラインPeekビューで結果を表示
 
 #### その他のコマンド
 
-- **`PathSearch: Find Usages`**: 変換したクエリでVS Codeの検索パネルを開く
-- **`PathSearch: Find Usages...`**: 検索前に必ずパターンピッカーを表示
+- **`PathSearch: Find References`**: ルールに従ってPeekビューで結果を表示
+- **`PathSearch: Find References...`**: 検索前に必ずルールピッカーを表示
 
 ## 設定
 
-### `pathsearch.transforms`
+### `pathsearch.rules`
 
-変換設定の配列。各変換には以下が含まれます:
+検索ルールの配列。各ルールには以下が含まれます（`transforms` は必須）:
 
-- **`name`**（必須）: 表示名
+- **`name`**（必須）: ルールの表示名
+- **`match`**（必須）: 対象ファイルのGlobパターン（空文字は何にもマッチしません）
+- **`maxResults`**（オプション）: ルール単位の最大結果数（`pathsearch.maxResults` を上書き）
+- **`transforms`**（必須）: 変換定義の配列
+
+#### `transforms`（配列）
+
+各変換には以下が含まれます:
+
 - **`extractFrom`**（必須）: ワークスペース相対ファイルパスに対してマッチする正規表現
 - **`searchFor`**（必須）: 置換パターン（`$1`, `$2`でキャプチャグループを使用）
-- **`applyTo`**（オプション）: 適用するファイルを絞り込むGlobパターン（例: `**/*.tsx`）
-- **`description`**（オプション）: ピッカーに表示される説明
 - **`searchAsRegex`**（オプション）: 結果をVS Code検索で正規表現パターンとして使用
-- **`searchIn`**（オプション）: 特定のディレクトリに検索を制限（例: `"src/"` または `["src/", "app/"]`）
+- **`searchScope`**（オプション）: 特定のディレクトリに検索を制限（例: `"src/"` または `["src/", "app/"]`）
+- **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.twig"` または `["**/*.twig", "**/*.html"]`）
 
-### `pathsearch.autoDetect`
+#### パターン対応早見表
 
-デフォルト: `true`
+- **`rules[].match`**（minimatch）: `*` と `{a,b}` をサポート
+- **`transforms[].filePattern`**（rg `--glob`）: `*` と `{a,b}` をサポート
+- **`transforms[].searchScope`**: `*` / `{}` は不可（パスのみ）
 
-1つのパターンのみがマッチした場合、自動的にその変換を選択します。`false`に設定すると常にピッカーを表示します。
+### `pathsearch.showPickerOnMultiple`
+
+デフォルト: `false`
+
+複数のルールがマッチした場合にピッカーを表示するかどうかを切り替えます。`true` でピッカー表示、`false` で先に記述されたルールを自動選択します。
 
 ### `pathsearch.maxResults`
 
 デフォルト: `100`
 
-Peek Usagesで表示する検索結果の最大数。範囲: 1-10000。
+Peekビューで表示する検索結果の最大数。範囲: 1-10000。
 
 非常に大きな結果セットでのパフォーマンス問題を防ぐために結果数を制限します。
 
@@ -108,7 +127,7 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 - **ファイルサイズ制限**: 10MBを超えるファイルは自動的に検索対象外
 - **ファイルごとのマッチ数**: ファイルあたり最大100マッチ
 - **総出力サイズ制限**: ripgrep出力が5MBを超えると検索を終了
-- **パスの制限**: `searchIn` は相対パスのみ受け付けます（`..` や絶対パスは不可）
+- **パスの制限**: `searchScope` は相対パスのみ受け付けます（`..` や絶対パス（`/`含む）は不可）
 - **ripgrep自動チェック**: 起動時にripgrepの可用性を確認し、見つからない場合は警告を表示
 
 ## 例
@@ -118,9 +137,13 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 ```json
 {
   "name": "Template File",
-  "applyTo": "**/*.{twig,blade.php,ejs,hbs}",
-  "extractFrom": ".*views/(.*)",
-  "searchFor": "@YourNamespace/$1"
+  "match": "**/*.{twig,blade.php,ejs,hbs}",
+  "transforms": [
+    {
+      "extractFrom": ".*views/(.*)",
+      "searchFor": "@YourNamespace/$1"
+    }
+  ]
 }
 ```
 
@@ -134,10 +157,14 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 ```json
 {
   "name": "React Component",
-  "applyTo": "**/{components,hooks}/**/*.{tsx,ts}",
-  "extractFrom": ".*/(?:components|hooks)/(.*)\\.tsx?$",
-  "searchFor": "from ['\"].*/$1",
-  "searchAsRegex": true
+  "match": "**/{components,hooks}/**/*.{tsx,ts}",
+  "transforms": [
+    {
+      "extractFrom": ".*/(?:components|hooks)/(.*)\\.tsx?$",
+      "searchFor": "from ['\"].*/$1",
+      "searchAsRegex": true
+    }
+  ]
 }
 ```
 
@@ -149,10 +176,14 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 ```json
 {
   "name": "Python Module",
-  "applyTo": "**/*.py",
-  "extractFrom": ".*/([^/]+)/([^/]+)\\.py$",
-  "searchFor": "from $1.$2 import|from $1 import $2",
-  "searchAsRegex": true
+  "match": "**/*.py",
+  "transforms": [
+    {
+      "extractFrom": ".*/([^/]+)/([^/]+)\\.py$",
+      "searchFor": "from $1.$2 import|from $1 import $2",
+      "searchAsRegex": true
+    }
+  ]
 }
 ```
 
@@ -164,10 +195,14 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 ```json
 {
   "name": "Translation Key",
-  "applyTo": "**/{locales,i18n,translations}/**/*.{json,yaml,yml}",
-  "extractFrom": ".*/([^/]+)/([^/]+)\\.(json|yaml|yml)$",
-  "searchFor": "$1:$2\\.|['\"]$1:$2\\.",
-  "searchAsRegex": true
+  "match": "**/{locales,i18n,translations}/**/*.{json,yaml,yml}",
+  "transforms": [
+    {
+      "extractFrom": ".*/([^/]+)/([^/]+)\\.(json|yaml|yml)$",
+      "searchFor": "$1:$2\\.|['\"]$1:$2\\.",
+      "searchAsRegex": true
+    }
+  ]
 }
 ```
 
@@ -182,11 +217,15 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 ```json
 {
   "name": "Frontend Component",
-  "applyTo": "**/*.tsx",
-  "extractFrom": ".*/components/(.*)\\.tsx$",
-  "searchFor": "import.*from ['\"].*/$1['\"]",
-  "searchAsRegex": true,
-  "searchIn": "src/frontend/" // フロントエンドディレクトリのみを検索
+  "match": "**/*.tsx",
+  "transforms": [
+    {
+      "extractFrom": ".*/components/(.*)\\.tsx$",
+      "searchFor": "import.*from ['\"].*/$1['\"]",
+      "searchAsRegex": true,
+      "searchScope": "src/frontend/" // フロントエンドディレクトリのみを検索
+    }
+  ]
 }
 ```
 
@@ -200,19 +239,21 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 
 ```json
 {
-  "searchIn": ["src/", "app/", "lib/"]
+  "searchScope": ["src/", "app/", "lib/"]
 }
 ```
 
-**ワイルドカードパターン**（高度）:
+※ `searchScope` はワイルドカードをサポートしません。ファイルの絞り込みは `filePattern` を使ってください。
+
+**ファイルパターンの絞り込み**:
 
 ```json
 {
-  "searchIn": "src/module-*/components/"
+  "filePattern": "**/*.twig"
 }
 ```
 
-これにより、`src/module-a/components/`、`src/module-b/components/` などを検索します。PathSearchは `searchIn` のワイルドカードパターンを自動的に展開します。
+対象ファイルを絞り込んで検索できます。
 
 ### 設定例
 
@@ -220,25 +261,32 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 
 ```json
 {
-  "pathsearch.transforms": [
+  "pathsearch.rules": [
     {
       "name": "React Component",
-      "applyTo": "**/*.tsx",
-      "extractFrom": ".*/components/(.*)\\.tsx$",
-      "searchFor": "import.*from ['\"].*/$1['\"]",
-      "searchAsRegex": true,
-      "description": "Reactコンポーネントのインポートを検索",
-      "searchIn": "src/" // src/ディレクトリのみを検索
+      "match": "**/*.tsx",
+      "transforms": [
+        {
+          "extractFrom": ".*/components/(.*)\\.tsx$",
+          "searchFor": "import.*from ['\"].*/$1['\"]",
+          "searchAsRegex": true,
+          "searchScope": "src/" // src/ディレクトリのみを検索
+        }
+      ]
     },
     {
       "name": "Backend API",
-      "applyTo": "**/*.ts",
-      "extractFrom": ".*/api/(.*)\\.ts$",
-      "searchFor": "...",
-      "searchIn": ["src/backend/", "src/api/"] // 複数ディレクトリ
+      "match": "**/*.ts",
+      "transforms": [
+        {
+          "extractFrom": ".*/api/(.*)\\.ts$",
+          "searchFor": "...",
+          "searchScope": ["src/backend/", "src/api/"] // 複数ディレクトリ
+        }
+      ]
     }
   ],
-  "pathsearch.autoDetect": true,
+  "pathsearch.showPickerOnMultiple": false,
   "pathsearch.maxResults": 100,
   "pathsearch.ripgrepPath": ""
 }
@@ -246,9 +294,9 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 
 ## 高度な使い方
 
-### Peek Usagesワークフロー
+### Peekワークフロー
 
-Peek Usages機能は、作業位置を失わずにファイルの使用箇所を素早く確認するのに最適です:
+Peek機能は、作業位置を失わずにファイルの使用箇所を素早く確認するのに最適です:
 
 1. プロジェクト内の任意のファイルを開く
 2. `Cmd+Shift+U`（Mac）または`Ctrl+Shift+U`（Windows/Linux）を押す
@@ -291,7 +339,7 @@ PathSearchはセキュリティを考慮して設計されています:
 - ワークスペース境界の強制
 - 外部コマンドの安全な処理
 
-すべての変換はワークスペース設定で定義されており、完全な制御と可視性を提供します。
+すべての検索ルールはワークスペース設定で定義されており、完全な制御と可視性を提供します。
 
 ## ライセンス
 

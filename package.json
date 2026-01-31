@@ -40,89 +40,107 @@
     "commands": [
       {
         "command": "pathsearch.search",
-        "title": "PathSearch: Find Usages"
+        "title": "PathSearch: Find References"
       },
       {
         "command": "pathsearch.searchWithPicker",
-        "title": "PathSearch: Find Usages..."
-      },
-      {
-        "command": "pathsearch.peekSearch",
-        "title": "PathSearch: Peek Usages"
+        "title": "PathSearch: Find References..."
       }
     ],
     "configuration": {
       "type": "object",
       "title": "PathSearch",
       "properties": {
-        "pathsearch.transforms": {
+        "pathsearch.rules": {
           "type": "array",
-          "default": [
-            {
-              "name": "Example: Template File",
-              "applyTo": "**/*.{twig,blade.php,ejs,hbs}",
-              "extractFrom": ".*views/(.*)",
-              "searchFor": "@YourNamespace/$1",
-              "description": "Search for template file usage (customize @YourNamespace)"
-            }
-          ],
-          "description": "Transform patterns for different file types",
+          "description": "Search rules that define path transforms per file type",
           "items": {
             "type": "object",
             "required": [
               "name",
-              "extractFrom",
-              "searchFor"
+              "match",
+              "transforms"
             ],
             "properties": {
               "name": {
                 "type": "string",
-                "description": "Display name for this transform"
+                "description": "Display name for this rule"
               },
-              "applyTo": {
+              "match": {
                 "type": "string",
-                "description": "Glob pattern to match files (e.g., **/*.tsx)"
+                "description": "Glob pattern to match files (required; empty string matches nothing)"
               },
-              "extractFrom": {
-                "type": "string",
-                "description": "Regular expression to match against workspace-relative file path"
+              "maxResults": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 10000,
+                "description": "Maximum number of search results to display in Peek view (overrides pathsearch.maxResults)"
               },
-              "searchFor": {
-                "type": "string",
-                "description": "Replacement pattern (use $1, $2 for capture groups)"
-              },
-              "description": {
-                "type": "string",
-                "description": "Optional description shown in picker"
-              },
-              "searchAsRegex": {
-                "type": "boolean",
-                "default": false,
-                "description": "Use the result as a regex pattern in search"
-              },
-              "searchIn": {
-                "oneOf": [
-                  {
-                    "type": "string",
-                    "description": "Directory to search in (e.g., 'src/')"
-                  },
-                  {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
+              "transforms": {
+                "type": "array",
+                "description": "Transform definitions applied to the current file",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "extractFrom",
+                    "searchFor"
+                  ],
+                  "properties": {
+                    "extractFrom": {
+                      "type": "string",
+                      "description": "Regular expression to match against workspace-relative file path"
                     },
-                    "description": "Directories to search in (e.g., ['src/', 'app/'])"
+                    "searchFor": {
+                      "type": "string",
+                      "description": "Replacement pattern (use $1, $2 for capture groups)"
+                    },
+                    "searchAsRegex": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Use the result as a regex pattern in search"
+                    },
+                    "searchScope": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "description": "Directory to search in (e.g., 'src/')"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Directories to search in (e.g., ['src/', 'app/'])"
+                        }
+                      ],
+                      "description": "Limit search to specific directories. Omit to search entire workspace."
+                    },
+                    "filePattern": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "description": "Glob pattern to filter target files (e.g., '**/*.twig', '!**/dist/**')"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Glob patterns to filter target files (e.g., ['**/*.twig', '!**/dist/**'])"
+                        }
+                      ],
+                      "description": "Limit search to matching files. Omit to search all files."
+                    }
                   }
-                ],
-                "description": "Limit search to specific directories. Omit to search entire workspace."
+                }
               }
             }
           }
         },
-        "pathsearch.autoDetect": {
+        "pathsearch.showPickerOnMultiple": {
           "type": "boolean",
-          "default": true,
-          "description": "Automatically select transform based on current file pattern"
+          "default": false,
+          "description": "Show the picker when multiple rules match the current file"
         },
         "pathsearch.maxResults": {
           "type": "number",
@@ -140,7 +158,7 @@
     },
     "keybindings": [
       {
-        "command": "pathsearch.peekSearch",
+        "command": "pathsearch.search",
         "key": "ctrl+shift+u",
         "mac": "cmd+shift+u",
         "when": "editorTextFocus"

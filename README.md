@@ -9,7 +9,7 @@ Transform file paths to search queries with customizable patterns and view resul
 ## Features
 
 - **Pattern-based file transformation**: Define regex patterns to transform file paths into search queries
-- **Peek Usages**: View search results in an inline Peek view without leaving your current file
+- **Inline Peek Results**: View search results in a Peek view without leaving your current file
 - **Ultra-fast search with ripgrep**: Powered by blazing-fast ripgrep (required)
 - **Auto-detection**: Automatically selects the right pattern based on file type
 - **Multiple patterns per file type**: Support different search strategies for the same file
@@ -23,70 +23,89 @@ If you have ripgrep installed in a custom location, configure the path in settin
 
 ## Usage
 
-### 1. Configure Transform Patterns
+### 1. Configure Search Rules
 
-Add transform patterns to your `.vscode/settings.json`:
+Add search rules to your `.vscode/settings.json`:
 
 ```json
 {
-  "pathsearch.transforms": [
+  "pathsearch.rules": [
     {
-      "name": "Example: Template File",
-      "applyTo": "**/*.{twig,blade.php,ejs,hbs}",
-      "extractFrom": ".*views/(.*)",
-      "searchFor": "@YourNamespace/$1",
-      "description": "Search for template file usage (customize @YourNamespace)"
+      "name": "Template File",
+      "match": "**/*.{twig,blade.php,ejs,hbs}",
+      "transforms": [
+        {
+          "extractFrom": ".*views/(.*)",
+          "searchFor": "@YourNamespace/$1"
+        }
+      ]
     },
     {
       "name": "React Component - Import",
-      "applyTo": "**/*.tsx",
-      "extractFrom": ".*/components/(.*)\\.tsx$",
-      "searchFor": "import.*from ['\"].*/$1['\"]",
-      "searchAsRegex": true,
-      "description": "Find React component imports"
+      "match": "**/*.tsx",
+      "transforms": [
+        {
+          "extractFrom": ".*/components/(.*)\\.tsx$",
+          "searchFor": "import.*from ['\"].*/$1['\"]",
+          "searchAsRegex": true
+        }
+      ]
     }
   ]
 }
 ```
 
-### 2. Find Usages
+### 2. Find References
 
-#### Peek Usages (Inline Results)
+#### Inline Results (Peek)
 
 - **Keyboard Shortcut**: `Ctrl+Shift+U` (Windows/Linux) or `Cmd+Shift+U` (Mac)
-- **Command Palette**: `PathSearch: Peek Usages`
+- **Command Palette**: `PathSearch: Find References`
 - Shows results in an inline Peek view at your current cursor position
 
 #### Other Commands
 
-- **`PathSearch: Find Usages`**: Opens the VS Code search panel with the transformed query
-- **`PathSearch: Find Usages...`**: Always show pattern picker before searching
+- **`PathSearch: Find References`**: Shows results in a Peek view (uses rule selection rules)
+- **`PathSearch: Find References...`**: Always show the rule picker before searching
 
 ## Configuration
 
-### `pathsearch.transforms`
+### `pathsearch.rules`
 
-Array of transform configurations. Each transform has:
+Array of search rules. Each rule includes the following (`transforms` is required):
 
-- **`name`** (required): Display name
+- **`name`** (required): Rule display name
+- **`match`** (required): Glob pattern to match files (empty string matches nothing)
+- **`maxResults`** (optional): Override `pathsearch.maxResults` for this rule
+- **`transforms`** (required): Array of transform definitions
+
+#### `transforms` (array)
+
+Each transform includes:
+
 - **`extractFrom`** (required): Regular expression to match against workspace-relative file path
 - **`searchFor`** (required): Replacement pattern (use `$1`, `$2` for capture groups)
-- **`applyTo`** (optional): Glob pattern to filter applicable files (e.g., `**/*.tsx`)
-- **`description`** (optional): Description shown in picker
 - **`searchAsRegex`** (optional): Use the result as a regex pattern in VS Code search
-- **`searchIn`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
+- **`searchScope`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
+- **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.twig"` or `["**/*.twig", "**/*.html"]`)
 
-### `pathsearch.autoDetect`
+#### Glob support quick guide
 
-Default: `true`
+- **`rules[].match`** (minimatch): supports `*` and `{a,b}`.
+- **`transforms[].filePattern`** (rg `--glob`): supports `*` and `{a,b}`.
+- **`transforms[].searchScope`**: does **not** support `*` or `{}` (paths only).
 
-Automatically select the transform when only one pattern matches. Set to `false` to always show the picker.
+### `pathsearch.showPickerOnMultiple`
+
+Default: `false`
+
+Controls whether to show the picker when multiple rules match. `true` shows the picker; `false` auto-selects the first rule.
 
 ### `pathsearch.maxResults`
 
 Default: `100`
 
-Maximum number of search results to display in Peek Usages. Range: 1-10000.
+Maximum number of search results to display in the Peek view. Range: 1-10000.
 
 Limits the number of results to prevent performance issues with very large result sets.
 
@@ -108,7 +127,7 @@ PathSearch has the following built-in limitations to ensure performance and secu
 - **File size limit**: Files larger than 10MB are automatically excluded from search
 - **Matches per file**: Maximum 100 matches per file
 - **Total output limit**: Search terminates if ripgrep output exceeds 5MB
-- **Path restrictions**: `searchIn` only accepts relative paths (no `..` or absolute paths)
+- **Path restrictions**: `searchScope` only accepts relative paths (no `..` or absolute paths, including `/`)
 - **Automatic ripgrep check**: On startup, PathSearch verifies ripgrep availability and shows a warning if not found
 
 ## Examples
@@ -118,9 +137,13 @@ PathSearch has the following built-in limitations to ensure performance and secu
 ```json
 {
   "name": "Template File",
-  "applyTo": "**/*.{twig,blade.php,ejs,hbs}",
-  "extractFrom": ".*views/(.*)",
-  "searchFor": "@YourNamespace/$1"
+  "match": "**/*.{twig,blade.php,ejs,hbs}",
+  "transforms": [
+    {
+      "extractFrom": ".*views/(.*)",
+      "searchFor": "@YourNamespace/$1"
+    }
+  ]
 }
 ```
 
@@ -134,10 +157,14 @@ PathSearch has the following built-in limitations to ensure performance and secu
 ```json
 {
   "name": "React Component",
-  "applyTo": "**/{components,hooks}/**/*.{tsx,ts}",
-  "extractFrom": ".*/(?:components|hooks)/(.*)\\.tsx?$",
-  "searchFor": "from ['\"].*/$1",
-  "searchAsRegex": true
+  "match": "**/{components,hooks}/**/*.{tsx,ts}",
+  "transforms": [
+    {
+      "extractFrom": ".*/(?:components|hooks)/(.*)\\.tsx?$",
+      "searchFor": "from ['\"].*/$1",
+      "searchAsRegex": true
+    }
+  ]
 }
 ```
 
@@ -149,10 +176,14 @@ PathSearch has the following built-in limitations to ensure performance and secu
 ```json
 {
   "name": "Python Module",
-  "applyTo": "**/*.py",
-  "extractFrom": ".*/([^/]+)/([^/]+)\\.py$",
-  "searchFor": "from $1.$2 import|from $1 import $2",
-  "searchAsRegex": true
+  "match": "**/*.py",
+  "transforms": [
+    {
+      "extractFrom": ".*/([^/]+)/([^/]+)\\.py$",
+      "searchFor": "from $1.$2 import|from $1 import $2",
+      "searchAsRegex": true
+    }
+  ]
 }
 ```
 
@@ -164,10 +195,14 @@ PathSearch has the following built-in limitations to ensure performance and secu
 ```json
 {
   "name": "Translation Key",
-  "applyTo": "**/{locales,i18n,translations}/**/*.{json,yaml,yml}",
-  "extractFrom": ".*/([^/]+)/([^/]+)\\.(json|yaml|yml)$",
-  "searchFor": "$1:$2\\.|['\"]$1:$2\\.",
-  "searchAsRegex": true
+  "match": "**/{locales,i18n,translations}/**/*.{json,yaml,yml}",
+  "transforms": [
+    {
+      "extractFrom": ".*/([^/]+)/([^/]+)\\.(json|yaml|yml)$",
+      "searchFor": "$1:$2\\.|['\"]$1:$2\\.",
+      "searchAsRegex": true
+    }
+  ]
 }
 ```
 
@@ -182,11 +217,15 @@ Limit search to specific directories for faster results:
 ```json
 {
   "name": "Frontend Component",
-  "applyTo": "**/*.tsx",
-  "extractFrom": ".*/components/(.*)\\.tsx$",
-  "searchFor": "import.*from ['\"].*/$1['\"]",
-  "searchAsRegex": true,
-  "searchIn": "src/frontend/" // Only search in frontend directory
+  "match": "**/*.tsx",
+  "transforms": [
+    {
+      "extractFrom": ".*/components/(.*)\\.tsx$",
+      "searchFor": "import.*from ['\"].*/$1['\"]",
+      "searchAsRegex": true,
+      "searchScope": "src/frontend/" // Only search in frontend directory
+    }
+  ]
 }
 ```
 
@@ -200,19 +239,21 @@ Limit search to specific directories for faster results:
 
 ```json
 {
-  "searchIn": ["src/", "app/", "lib/"]
+  "searchScope": ["src/", "app/", "lib/"]
 }
 ```
 
-**Wildcard patterns** (advanced):
+Note: `searchScope` does not support wildcards. Use `filePattern` to filter files instead.
+
+**File pattern filter**:
 
 ```json
 {
-  "searchIn": "src/module-*/components/"
+  "filePattern": "**/*.twig"
 }
 ```
 
-This will search in `src/module-a/components/`, `src/module-b/components/`, etc. PathSearch automatically expands wildcard patterns in `searchIn`.
+This limits searches to matching files while keeping the same scope.
 
 ### Configuration Example
 
@@ -220,25 +261,32 @@ Complete configuration example with all options:
 
 ```json
 {
-  "pathsearch.transforms": [
+  "pathsearch.rules": [
     {
       "name": "React Component",
-      "applyTo": "**/*.tsx",
-      "extractFrom": ".*/components/(.*)\\.tsx$",
-      "searchFor": "import.*from ['\"].*/$1['\"]",
-      "searchAsRegex": true,
-      "description": "Find React component imports",
-      "searchIn": "src/" // Search only in src/ directory
+      "match": "**/*.tsx",
+      "transforms": [
+        {
+          "extractFrom": ".*/components/(.*)\\.tsx$",
+          "searchFor": "import.*from ['\"].*/$1['\"]",
+          "searchAsRegex": true,
+          "searchScope": "src/" // Search only in src/ directory
+        }
+      ]
     },
     {
       "name": "Backend API",
-      "applyTo": "**/*.ts",
-      "extractFrom": ".*/api/(.*)\\.ts$",
-      "searchFor": "...",
-      "searchIn": ["src/backend/", "src/api/"] // Multiple directories
+      "match": "**/*.ts",
+      "transforms": [
+        {
+          "extractFrom": ".*/api/(.*)\\.ts$",
+          "searchFor": "...",
+          "searchScope": ["src/backend/", "src/api/"] // Multiple directories
+        }
+      ]
     }
   ],
-  "pathsearch.autoDetect": true,
+  "pathsearch.showPickerOnMultiple": false,
   "pathsearch.maxResults": 100,
   "pathsearch.ripgrepPath": ""
 }
@@ -246,9 +294,9 @@ Complete configuration example with all options:
 
 ## Advanced Usage
 
-### Peek Usages Workflow
+### Peek Workflow
 
-The Peek Usages feature is perfect for quickly checking where a file is used without losing your place:
+Peek results are perfect for quickly checking where a file is used without losing your place:
 
 1. Open any file in your project
 2. Press `Cmd+Shift+U` (Mac) or `Ctrl+Shift+U` (Windows/Linux)
@@ -291,7 +339,7 @@ PathSearch is designed with security in mind:
 - Workspace boundary enforcement
 - Secure handling of external commands
 
-All transforms are defined in your workspace settings, giving you full control and visibility.
+All search rules are defined in your workspace settings, giving you full control and visibility.
 
 ## License
 
