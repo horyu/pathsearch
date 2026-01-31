@@ -34,7 +34,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/extension.cjs",
   "type": "module",
   "contributes": {
     "commands": [
@@ -148,7 +148,7 @@
     ]
   },
   "scripts": {
-    "build:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "build:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.cjs --external:vscode --format=cjs --platform=node",
     "vscode:prepublish": "pnpm run typecheck && pnpm run lint && pnpm run build:base --minify",
     "compile": "pnpm run build:base --sourcemap",
     "watch": "pnpm run build:base --sourcemap --watch",
