@@ -4,6 +4,7 @@
   "description": "Transform file paths to search queries with customizable patterns",
   "version": "0.1.0",
   "publisher": "local",
+  "icon": "assets/icon128.png",
   "license": "WTFPL",
   "repository": {
     "type": "git",
@@ -40,7 +41,11 @@
     "commands": [
       {
         "command": "pathsearch.search",
-        "title": "PathSearch: Find References"
+        "title": "PathSearch: Find References",
+        "icon": {
+          "light": "assets/icon-light.svg",
+          "dark": "assets/icon-dark.svg"
+        }
       },
       {
         "command": "pathsearch.searchWithPicker",
@@ -222,6 +227,15 @@
           "description": "Custom path to ripgrep executable. Leave empty to use ripgrep from PATH."
         }
       }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "pathsearch.search",
+          "when": "resourceScheme == file",
+          "group": "navigation@50"
+        }
+      ]
     },
     "keybindings": [
       {
