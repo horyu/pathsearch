@@ -44,7 +44,7 @@
       },
       {
         "command": "pathsearch.searchWithPicker",
-        "title": "PathSearch: Find References..."
+        "title": "PathSearch: Find References (Always Picker)"
       }
     ],
     "configuration": {

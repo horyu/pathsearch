@@ -77,7 +77,7 @@ ripgrepがカスタムの場所にインストールされている場合は、�
 #### その他のコマンド
 
 - **`PathSearch: Find References`**: ルールに従ってPeekビューで結果を表示
-- **`PathSearch: Find References...`**: 検索前に必ずルールピッカーを表示
+- **`PathSearch: Find References (Always Picker)`**: 検索前に必ずルールピッカーを表示
 
 ## 設定
 

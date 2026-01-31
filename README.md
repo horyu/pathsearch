@@ -77,7 +77,7 @@ Add search rules to your `.vscode/settings.json`:
 #### Other Commands
 
 - **`PathSearch: Find References`**: Shows results in a Peek view (uses rule selection rules)
-- **`PathSearch: Find References...`**: Always show the rule picker before searching
+- **`PathSearch: Find References (Always Picker)`**: Always show the rule picker before searching
 
 ## Configuration
 
