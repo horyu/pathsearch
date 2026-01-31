@@ -348,45 +348,12 @@ async function searchInWorkspace(
   searchQuery: string,
   isRegex: boolean = false,
   maxResults: number = 100,
+  rgPath: string,
+  workspaceRoot: string,
   searchScope?: string | string[],
   filePattern?: string | string[]
 ): Promise<vscode.Location[]> {
   logInfo(`Starting search for "${searchQuery}" (regex: ${isRegex})`);
-
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  const workspaceRoot = workspaceFolder?.uri.fsPath;
-
-  if (!workspaceRoot) {
-    throw new Error('No workspace folder open');
-  }
-
-  let rgPath: string;
-  try {
-    rgPath = getRipgrepPath();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to validate ripgrep path';
-    vscode.window.showErrorMessage(`PathSearch: ${message}`);
-    throw error;
-  }
-
-  const hasRipgrep = await checkRipgrepAvailable(rgPath);
-
-  if (!hasRipgrep) {
-    const installUrl = 'https://github.com/BurntSushi/ripgrep#installation';
-    const result = await vscode.window.showErrorMessage(
-      'PathSearch requires ripgrep to be installed. Please install ripgrep and restart VS Code.',
-      'Open Installation Guide',
-      'Configure ripgrep Path'
-    );
-
-    if (result === 'Open Installation Guide') {
-      vscode.env.openExternal(vscode.Uri.parse(installUrl));
-    } else if (result === 'Configure ripgrep Path') {
-      vscode.commands.executeCommand('workbench.action.openSettings', 'pathsearch.ripgrepPath');
-    }
-
-    throw new Error('ripgrep not available');
-  }
 
   return await searchWithRipgrep(searchQuery, isRegex, maxResults, rgPath, workspaceRoot, searchScope, filePattern);
 }
@@ -446,6 +413,34 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
     return;
   }
 
+  const workspaceRoot = workspaceFolder.uri.fsPath;
+  let rgPath: string;
+  try {
+    rgPath = getRipgrepPath();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to validate ripgrep path';
+    vscode.window.showErrorMessage(`PathSearch: ${message}`);
+    return;
+  }
+
+  const hasRipgrep = await checkRipgrepAvailable(rgPath);
+  if (!hasRipgrep) {
+    const result = await vscode.window.showErrorMessage(
+      'PathSearch requires ripgrep to be installed. Please install ripgrep and restart VS Code.',
+      'Open Installation Guide',
+      'Configure ripgrep Path'
+    );
+
+    if (result === 'Open Installation Guide') {
+      const installUrl = 'https://github.com/BurntSushi/ripgrep#installation';
+      vscode.env.openExternal(vscode.Uri.parse(installUrl));
+    } else if (result === 'Configure ripgrep Path') {
+      vscode.commands.executeCommand('workbench.action.openSettings', 'pathsearch.ripgrepPath');
+    }
+
+    return;
+  }
+
   const maxResults = selectedRule.maxResults ?? config.get<number>('maxResults', 100);
   const locations: vscode.Location[] = [];
   const errors: string[] = [];
@@ -473,6 +468,8 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
         searchQuery,
         useRegex,
         remaining,
+        rgPath,
+        workspaceRoot,
         transform.searchScope,
         transform.filePattern
       );
@@ -504,40 +501,6 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
 
 export function activate(context: vscode.ExtensionContext) {
   initializeOutputChannel(context);
-  try {
-    const rgPath = getRipgrepPath();
-    checkRipgrepAvailable(rgPath)
-      .then(available => {
-        if (!available) {
-          const installUrl = 'https://github.com/BurntSushi/ripgrep#installation';
-          vscode.window
-            .showWarningMessage(
-              'PathSearch requires ripgrep. Please install ripgrep for full functionality.',
-              'Open Installation Guide',
-              'Configure ripgrep Path',
-              'Dismiss'
-            )
-            .then(result => {
-              if (result === 'Open Installation Guide') {
-                vscode.env.openExternal(vscode.Uri.parse(installUrl));
-              } else if (result === 'Configure ripgrep Path') {
-                vscode.commands.executeCommand('workbench.action.openSettings', 'pathsearch.ripgrepPath');
-              }
-            });
-        }
-      })
-      .catch(error => {
-        logError('Failed to check ripgrep on activation:', error);
-        vscode.window.showErrorMessage(
-          `PathSearch: ${error instanceof Error ? error.message : 'Failed to validate ripgrep path'}`
-        );
-      });
-  } catch (error) {
-    logError('Failed to get ripgrep path on activation:', error);
-    vscode.window.showErrorMessage(
-      `PathSearch: ${error instanceof Error ? error.message : 'Failed to validate ripgrep path'}`
-    );
-  }
 
   // Find References: respects showPickerOnMultiple
   context.subscriptions.push(
