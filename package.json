@@ -32,9 +32,6 @@
     "regex",
     "ripgrep"
   ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
   "main": "./out/extension.cjs",
   "type": "module",
   "contributes": {
