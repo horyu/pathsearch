@@ -364,6 +364,10 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
     vscode.window.showErrorMessage('No active editor');
     return;
   }
+  if (editor.document.uri.scheme !== 'file') {
+    vscode.window.showWarningMessage('Please run PathSearch from a file editor.');
+    return;
+  }
 
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) {
