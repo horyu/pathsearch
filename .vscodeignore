@@ -1,10 +1,7 @@
-.vscode/**
-src/**
-.gitignore
-.prettierignore
-.prettierrc
-tsconfig.json
-eslint.config.js
-pnpm-lock.yaml
-node_modules/**
-*.vsix
+**/*
+!assets/**
+!out/**
+!LICENSE
+!package.json
+!README.md
+!README.ja.md
