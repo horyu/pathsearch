@@ -10,7 +10,8 @@ Transform file paths to search queries with customizable patterns and view resul
 
 - **Pattern-based file transformation**: Define regex patterns to transform file paths into search queries
 - **Inline Peek Results**: View search results in a Peek view without leaving your current file
-- **Ultra-fast search with ripgrep**: Powered by blazing-fast ripgrep (required)
+- **Search with ripgrep**: Uses ripgrep (required)
+- **Respects .gitignore**: Exclusions are honored by ripgrep
 - **Auto-detection**: Automatically selects the right pattern based on file type
 - **Multiple patterns per file type**: Support different search strategies for the same file
 - **Secure**: Protected against command injection, path traversal, and other security vulnerabilities
@@ -50,6 +51,16 @@ Add search rules to your `.vscode/settings.json`:
           "searchAsRegex": true
         }
       ]
+    },
+    {
+      "name": "SCSS Relative Imports",
+      "match": "**/*.scss",
+      "relative": {
+        "matchTarget": "fileStem",
+        "maxDepth": 3,
+        "searchScope": "src/",
+        "filePattern": "**/*.scss"
+      }
     }
   ]
 }
@@ -86,7 +97,7 @@ Each transform includes:
 
 - **`extractFrom`** (required): Regular expression to match against workspace-relative file path
 - **`searchFor`** (required): Replacement pattern (use `$1`, `$2` for capture groups)
-- **`searchAsRegex`** (optional): Use the result as a regex pattern in VS Code search
+- **`searchAsRegex`** (optional): Use the result as a regex pattern in ripgrep search
 - **`searchScope`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
 - **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.twig"` or `["**/*.twig", "**/*.html"]`)
 
@@ -332,23 +343,6 @@ Peek results are perfect for quickly checking where a file is used without losin
 3. Results appear inline at your cursor position
 4. Navigate through results with arrow keys
 5. Press `Escape` to close and return to your code
-
-### Pattern Optimization
-
-To get the best performance:
-
-1. **Use specific file patterns**: `**/*.tsx` instead of `**/*`
-2. **Limit results**: Adjust `pathsearch.maxResults` based on your needs
-3. **Install ripgrep**: Provides 10-100x speedup for large projects
-
-## Performance
-
-PathSearch is powered by **ripgrep**, a lightning-fast search tool written in Rust:
-
-- Automatically respects `.gitignore`
-- 10-100x faster than traditional search methods
-- Handles large codebases efficiently
-- Parallel search across multiple files
 
 ## Security
 
