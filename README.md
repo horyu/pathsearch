@@ -72,12 +72,13 @@ Add search rules to your `.vscode/settings.json`:
 
 ### `pathsearch.rules`
 
-Array of search rules. Each rule includes the following (`transforms` is required):
+Array of search rules. Each rule includes the following (at least one of `transforms` or `relative` is required):
 
 - **`name`** (required): Rule display name
 - **`match`** (required): Glob pattern to match files (empty string matches nothing)
 - **`maxResults`** (optional): Override `pathsearch.maxResults` for this rule
-- **`transforms`** (required): Array of transform definitions
+- **`transforms`** (optional): Array of transform definitions
+- **`relative`** (optional): Relative path search settings
 
 #### `transforms` (array)
 
@@ -89,11 +90,22 @@ Each transform includes:
 - **`searchScope`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
 - **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.twig"` or `["**/*.twig", "**/*.html"]`)
 
+#### `relative` (object)
+
+Relative path search settings:
+
+- **`matchTarget`** (required): What to match (`parentDir`, `fileName`, `fileStem`)
+- **`maxDepth`** (optional): Maximum number of `../` segments allowed. Use `0` to allow only same-level (and child) relative paths.
+- **`searchScope`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
+- **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.scss"` or `["**/*.scss", "**/*.css"]`)
+
 #### Glob support quick guide
 
 - **`rules[].match`** (minimatch): supports `*` and `{a,b}`.
 - **`transforms[].filePattern`** (rg `--glob`): supports `*` and `{a,b}`.
 - **`transforms[].searchScope`**: does **not** support `*` or `{}` (paths only).
+- **`relative.filePattern`** (rg `--glob`): supports `*` and `{a,b}`.
+- **`relative.searchScope`**: does **not** support `*` or `{}` (paths only).
 
 ### `pathsearch.showPickerOnMultiple`
 
@@ -128,7 +140,6 @@ PathSearch has the following built-in limitations to ensure performance and secu
 - **Matches per file**: Maximum 100 matches per file
 - **Total output limit**: Search terminates if ripgrep output exceeds 5MB
 - **Path restrictions**: `searchScope` only accepts relative paths (no `..` or absolute paths, including `/`)
-- **Automatic ripgrep check**: On startup, PathSearch verifies ripgrep availability and shows a warning if not found
 
 ## Examples
 
@@ -209,6 +220,24 @@ PathSearch has the following built-in limitations to ensure performance and secu
 **File**: `locales/en/common.json`
 **Search query (regex)**: `en:common\.|['"]en:common\.`
 **Finds**: `t('en:common.welcome')`, `i18n.t("en:common.button")`
+
+### Relative Imports (SCSS)
+
+```json
+{
+  "name": "SCSS Relative Imports",
+  "match": "**/*.scss",
+  "relative": {
+    "matchTarget": "fileStem",
+    "maxDepth": 3,
+    "searchScope": "src/",
+    "filePattern": "**/*.scss"
+  }
+}
+```
+
+**File**: `src/styles/button.scss`
+**Search**: Finds relative imports like `@use "./button"` or `@import "../styles/button"`
 
 ### Limiting Search Scope
 

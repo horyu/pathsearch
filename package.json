@@ -58,8 +58,19 @@
             "type": "object",
             "required": [
               "name",
-              "match",
-              "transforms"
+              "match"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "transforms"
+                ]
+              },
+              {
+                "required": [
+                  "relative"
+                ]
+              }
             ],
             "properties": {
               "name": {
@@ -131,6 +142,62 @@
                       ],
                       "description": "Limit search to matching files. Omit to search all files."
                     }
+                  }
+                }
+              },
+              "relative": {
+                "type": "object",
+                "description": "Relative path search settings (optional).",
+                "required": [
+                  "matchTarget"
+                ],
+                "properties": {
+                  "matchTarget": {
+                    "type": "string",
+                    "enum": [
+                      "parentDir",
+                      "fileName",
+                      "fileStem"
+                    ],
+                    "description": "What to match for relative imports."
+                  },
+                  "maxDepth": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 50,
+                    "description": "Maximum depth to walk up for relative candidates."
+                  },
+                  "searchScope": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "description": "Directory to search in (e.g., 'src/')"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Directories to search in (e.g., ['src/', 'app/'])"
+                      }
+                    ],
+                    "description": "Limit search to specific directories. Omit to search entire workspace."
+                  },
+                  "filePattern": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "description": "Glob pattern to filter target files (e.g., '**/*.twig', '!**/dist/**')"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Glob patterns to filter target files (e.g., ['**/*.twig', '!**/dist/**'])"
+                      }
+                    ],
+                    "description": "Limit search to matching files. Omit to search all files."
                   }
                 }
               }

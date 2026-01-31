@@ -72,12 +72,13 @@ ripgrepがカスタムの場所にインストールされている場合は、�
 
 ### `pathsearch.rules`
 
-検索ルールの配列。各ルールには以下が含まれます（`transforms` は必須）:
+検索ルールの配列。各ルールには以下が含まれます（`transforms` または `relative` のいずれかは必須）:
 
 - **`name`**（必須）: ルールの表示名
 - **`match`**（必須）: 対象ファイルのGlobパターン（空文字は何にもマッチしません）
 - **`maxResults`**（オプション）: ルール単位の最大結果数（`pathsearch.maxResults` を上書き）
-- **`transforms`**（必須）: 変換定義の配列
+- **`transforms`**（オプション）: 変換定義の配列
+- **`relative`**（オプション）: 相対パス検索の設定
 
 #### `transforms`（配列）
 
@@ -89,11 +90,22 @@ ripgrepがカスタムの場所にインストールされている場合は、�
 - **`searchScope`**（オプション）: 特定のディレクトリに検索を制限（例: `"src/"` または `["src/", "app/"]`）
 - **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.twig"` または `["**/*.twig", "**/*.html"]`）
 
+#### `relative`（オブジェクト）
+
+相対パス検索の設定:
+
+- **`matchTarget`**（必須）: `parentDir` / `fileName` / `fileStem`
+- **`maxDepth`**（オプション）: `../` の上限。`0` の場合は同じ階層以下のみ許可
+- **`searchScope`**（オプション）: 特定のディレクトリに検索を制限（例: `"src/"` または `["src/", "app/"]`）
+- **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.scss"` または `["**/*.scss", "**/*.css"]`）
+
 #### パターン対応早見表
 
 - **`rules[].match`**（minimatch）: `*` と `{a,b}` をサポート
 - **`transforms[].filePattern`**（rg `--glob`）: `*` と `{a,b}` をサポート
 - **`transforms[].searchScope`**: `*` / `{}` は不可（パスのみ）
+- **`relative.filePattern`**（rg `--glob`）: `*` と `{a,b}` をサポート
+- **`relative.searchScope`**: `*` / `{}` は不可（パスのみ）
 
 ### `pathsearch.showPickerOnMultiple`
 
@@ -128,7 +140,6 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 - **ファイルごとのマッチ数**: ファイルあたり最大100マッチ
 - **総出力サイズ制限**: ripgrep出力が5MBを超えると検索を終了
 - **パスの制限**: `searchScope` は相対パスのみ受け付けます（`..` や絶対パス（`/`含む）は不可）
-- **ripgrep自動チェック**: 起動時にripgrepの可用性を確認し、見つからない場合は警告を表示
 
 ## 例
 
@@ -209,6 +220,24 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 **ファイル**: `locales/en/common.json`
 **検索クエリ（正規表現）**: `en:common\.|['"]en:common\.`
 **検索結果**: `t('en:common.welcome')`, `i18n.t("en:common.button")`
+
+### 相対インポート（SCSS）
+
+```json
+{
+  "name": "SCSS Relative Imports",
+  "match": "**/*.scss",
+  "relative": {
+    "matchTarget": "fileStem",
+    "maxDepth": 3,
+    "searchScope": "src/",
+    "filePattern": "**/*.scss"
+  }
+}
+```
+
+**ファイル**: `src/styles/button.scss`
+**検索**: `@use "./button"` や `@import "../styles/button"` のような相対参照を検索
 
 ### 検索範囲の制限
 
