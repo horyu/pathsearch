@@ -377,6 +377,13 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
     vscode.window.showWarningMessage('No rules configured. Please add rules in settings.');
     return;
   }
+  const missingNameIndex = rules.findIndex(rule => !rule.name || rule.name.trim().length === 0);
+  if (missingNameIndex !== -1) {
+    const message = `Invalid rule at index ${missingNameIndex}: "name" is required.`;
+    logError(message);
+    vscode.window.showErrorMessage(message);
+    return;
+  }
 
   const relativeFilePath = getRelativeFilePath(editor, workspaceFolder);
   const matchingRules = getMatchingRules(rules, relativeFilePath);
