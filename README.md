@@ -4,6 +4,9 @@ English | **[日本語](README.ja.md)**
 
 Transform file paths to search queries with customizable patterns and view results instantly in a Peek view.
 
+![Demo](assets/demo.gif)
+![Toolbar Button](assets/demo-button.png)
+
 **Why PathSearch?** Standard LSP-based "Find All References" works great for code symbols, but fails for file path-based references like template paths, translation keys, or dynamic imports. PathSearch bridges this gap by converting physical file paths into logical search queries automatically.
 
 ## Features
