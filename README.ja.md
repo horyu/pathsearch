@@ -10,17 +10,21 @@
 
 - **パターンベースのファイル変換**: 正規表現パターンを定義してファイルパスを検索クエリに変換
 - **インラインPeek結果**: 現在のファイルを離れずにPeekビューで検索結果を表示
-- **ripgrepで検索**: ripgrepで動作（必須）
+- **ripgrepで検索**: ripgrepで動作（PATH または VS Code 同梱を利用）
 - **.gitignore を尊重**: ripgrep により除外設定を反映
 - **自動検出**: ファイルタイプに基づいて適切なパターンを自動選択
 - **1つのファイルタイプに複数のパターン**: 同じファイルに対して異なる検索戦略をサポート
 - **セキュア**: コマンドインジェクション、パストラバーサル、その他のセキュリティ脆弱性から保護
 
-## 要件
+## ripgrep の解決順
 
-**ripgrep**がPathSearchの動作に必要です。[公式インストールガイド](https://github.com/BurntSushi/ripgrep#installation)を使用してripgrepをインストールしてください。
+PathSearch は ripgrep を次の順で解決します:
 
-ripgrepがカスタムの場所にインストールされている場合は、設定でパスを指定してください: `pathsearch.ripgrepPath`
+1. `pathsearch.ripgrepPath`（設定時はフォールバックなし）
+2. PATH の `rg`
+3. VS Code 同梱の `app/node_modules/@vscode/ripgrep/bin`（VS Code のバージョンでパスが変わる可能性があります）
+
+いずれも利用できない場合は、[公式インストールガイド](https://github.com/BurntSushi/ripgrep#installation)でインストールしてください。
 
 ## 使い方
 
@@ -134,9 +138,9 @@ Peekビューで表示する検索結果の最大数。範囲: 1-10000。
 
 ### `pathsearch.ripgrepPath`
 
-デフォルト: `""`（空 - PATHからripgrepを使用）
+デフォルト: `""`（空 - PATHまたはVS Code同梱のripgrepを使用）
 
-ripgrep実行ファイルへのカスタムパス。ripgrepがシステムのPATHにない場合は、ここで`rg`実行ファイルへのフルパスを指定してください。
+ripgrep実行ファイルへのカスタムパス。解決順は「[ripgrep の解決順](#ripgrep-の解決順)」を参照してください。
 
 例:
 

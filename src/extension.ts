@@ -15,12 +15,22 @@ function getRelativeFilePath(editor: vscode.TextEditor, workspaceFolder: vscode.
   return path.relative(workspaceFolder.uri.fsPath, filePath);
 }
 
-function getRipgrepPath(): string {
+async function getRipgrepPath(): Promise<string> {
   const config = vscode.workspace.getConfiguration('pathsearch');
   const customPath = config.get<string>('ripgrepPath', '');
 
   if (!customPath) {
-    return 'rg';
+    const hasPathRipgrep = await checkRipgrepAvailable('rg');
+    if (hasPathRipgrep) {
+      return 'rg';
+    }
+
+    const bundledPath = getBundledRipgrepPath(vscode.env.appRoot);
+    if (bundledPath) {
+      return bundledPath;
+    }
+
+    throw new Error('Ripgrep not found in PATH or VS Code bundle');
   }
 
   if (!/^[a-zA-Z0-9\-_/.:\\]+$/.test(customPath)) {
@@ -53,6 +63,12 @@ function getRipgrepPath(): string {
     logError('Failed to validate ripgrep path', error);
     throw new Error('Failed to validate ripgrep path');
   }
+}
+
+function getBundledRipgrepPath(appRoot: string): string | undefined {
+  const binName = process.platform === 'win32' ? 'rg.exe' : 'rg';
+  const candidate = path.join(appRoot, 'node_modules/@vscode/ripgrep/bin', binName);
+  return fs.existsSync(candidate) ? candidate : undefined;
 }
 
 async function checkRipgrepAvailable(rgPath: string): Promise<boolean> {
@@ -319,7 +335,7 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
   const workspaceRoot = workspaceFolder.uri.fsPath;
   let rgPath: string;
   try {
-    rgPath = getRipgrepPath();
+    rgPath = await getRipgrepPath();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to validate ripgrep path';
     vscode.window.showErrorMessage(`PathSearch: ${message}`);

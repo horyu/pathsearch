@@ -10,17 +10,21 @@ Transform file paths to search queries with customizable patterns and view resul
 
 - **Pattern-based file transformation**: Define regex patterns to transform file paths into search queries
 - **Inline Peek Results**: View search results in a Peek view without leaving your current file
-- **Search with ripgrep**: Uses ripgrep (required)
+- **Search with ripgrep**: Uses ripgrep (via PATH or VS Code bundle)
 - **Respects .gitignore**: Exclusions are honored by ripgrep
 - **Auto-detection**: Automatically selects the right pattern based on file type
 - **Multiple patterns per file type**: Support different search strategies for the same file
 - **Secure**: Protected against command injection, path traversal, and other security vulnerabilities
 
-## Requirements
+## ripgrep resolution
 
-**ripgrep** is required for PathSearch to function. Install ripgrep using the [official installation guide](https://github.com/BurntSushi/ripgrep#installation).
+PathSearch uses ripgrep in the following order:
 
-If you have ripgrep installed in a custom location, configure the path in settings: `pathsearch.ripgrepPath`
+1. `pathsearch.ripgrepPath` (no fallback when set)
+2. `rg` from PATH
+3. VS Code bundled `app/node_modules/@vscode/ripgrep/bin` (path may change between VS Code versions)
+
+If none are available, install ripgrep using the [official installation guide](https://github.com/BurntSushi/ripgrep#installation).
 
 ## Usage
 
@@ -134,9 +138,9 @@ Limits the number of results to prevent performance issues with very large resul
 
 ### `pathsearch.ripgrepPath`
 
-Default: `""` (empty - use ripgrep from PATH)
+Default: `""` (empty - use ripgrep from PATH or VS Code bundle)
 
-Custom path to the ripgrep executable. If ripgrep is not in your system PATH, specify the full path to the `rg` executable here.
+Custom path to the ripgrep executable. See [ripgrep resolution](#ripgrep-resolution) for how it is resolved.
 
 Example:
 
