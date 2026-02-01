@@ -245,7 +245,7 @@
   },
   "scripts": {
     "build:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.cjs --external:vscode --format=cjs --platform=node",
-    "vscode:prepublish": "pnpm run typecheck && pnpm run lint && pnpm run build:base --minify",
+    "vscode:prepublish": "pnpm run typecheck && pnpm run lint && node scripts/build.mjs",
     "compile": "pnpm run build:base --sourcemap",
     "watch": "pnpm run build:base --sourcemap --watch",
     "typecheck": "tsc && tsc -p tsconfig.test.json",
@@ -264,6 +264,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@rnx-kit/third-party-notices": "^2.0.2",
     "@types/node": "^25.1.0",
     "@types/vscode": "^1.108.1",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
