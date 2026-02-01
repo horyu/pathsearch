@@ -4,6 +4,7 @@
 
 - ユーザー環境では `pnpm` / `node` / `rg` が PATH に通っている前提で進める
 - `lint` / `format` / `test` / `typecheck` は作業が一段落するたびに、ユーザー許可を待たずに実行する
+- Codex からは `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test` を使って直列実行し、ユーザー環境では `pnpm check`（run-p）を使う
 
 ## プロジェクト構成メモ
 
