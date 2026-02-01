@@ -290,7 +290,8 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.mjs\"",
     "check": "run-p lint format:check typecheck test",
     "test": "node --test --test-isolation=none --experimental-strip-types \"src/**/*.test.ts\"",
-    "test:bridge": "node scripts/test-bridge.mjs"
+    "test:bridge": "node scripts/test-bridge.mjs",
+    "test:bridge:codex": "node scripts/codex-test-bridge.mjs"
   },
   "dependencies": {
     "minimatch": "^10.1.1"

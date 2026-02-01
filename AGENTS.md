@@ -12,11 +12,9 @@
 
 ## テスト
 
-- 単体: `pnpm test` は node:test を使用
-- 統合: ripgrep 実行が必要なため、Codex からは `scripts/test-bridge.mjs` 経由でユーザー環境で走らせる前提
-  - `scripts/test-bridge.mjs` は常駐起動（request/result は `tmp/`）。Codex は `tmp/test.request.json` を更新して実行をリクエストする
-  - `pnpm test` で統合がスキップされる場合は、ユーザー側で `pnpm test:bridge` を起動し、`tmp/test.request.json`（最小 `{}`。削除時は再作成）を更新して実行する
-  - 統合テスト（`src/integration/**`）を変更した場合は、Codex が `tmp/test.request.json` を更新して bridge を実行する
+- 単体: `pnpm test`（node:test）
+- 統合: ユーザー側で `pnpm test:bridge` を常駐起動し、Codex は `pnpm run test:bridge:codex` で request更新〜結果待ちまで自動化する
+  - 統合テスト（`src/integration/**`）変更時は `pnpm run test:bridge:codex` を実行
 
 ## 仕様・運用の注意
 
