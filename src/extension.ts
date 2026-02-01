@@ -50,7 +50,7 @@ function getRipgrepPath(): string {
     if (error instanceof Error && error.message.includes('PathSearch')) {
       throw error;
     }
-    logError(`Failed to validate ripgrep path:`, error);
+    logError('Failed to validate ripgrep path', error);
     throw new Error('Failed to validate ripgrep path');
   }
 }
@@ -74,7 +74,7 @@ async function checkRipgrepAvailable(rgPath: string): Promise<boolean> {
       proc.stdout.on('data', (data: Buffer) => {
         output += data.toString();
         if (output.length > maxOutput) {
-          logError(`ripgrep output exceeded size limit`);
+          logError('ripgrep output exceeded size limit');
           proc.kill();
           resolve(false);
         }
@@ -97,7 +97,7 @@ async function checkRipgrepAvailable(rgPath: string): Promise<boolean> {
         resolve(false);
       });
     } catch (error) {
-      logError(`Failed to check ripgrep:`, error);
+      logError('Failed to check ripgrep', error);
       resolve(false);
     }
   });
@@ -119,7 +119,7 @@ async function searchWithRipgrep(
     return locations;
   }
 
-  logInfo(`Starting search for "${searchQuery}" (regex: ${isRegex})`);
+  logInfo(`Search start: "${searchQuery}" (regex: ${isRegex})`);
 
   const searchPaths = searchScope
     ? (Array.isArray(searchScope) ? searchScope : [searchScope]).map(scope => (scope === '' ? '.' : scope))
@@ -189,18 +189,19 @@ async function searchWithRipgrep(
     proc.on('close', (code: number | null) => {
       if (code !== 0 && code !== 1) {
         logError(`Ripgrep exited with code ${code}`);
-        logError(`stderr: ${stderr.substring(0, 200)}`);
-        reject(new Error(`Ripgrep search failed`));
+        if (stderr) {
+          logError(`Ripgrep stderr: ${stderr.substring(0, 200)}`);
+        }
+        reject(new Error('Ripgrep search failed'));
         return;
       }
 
       if (code === 1) {
-        logInfo(`Ripgrep found no matches`);
+        logInfo('Search complete: 0 matches');
         resolve(locations);
         return;
       }
       const matches = parseRipgrepMatches(stdout);
-      logInfo(`Parsing ${matches.length} matches from ripgrep output`);
 
       for (const match of matches) {
         if (locations.length >= maxResults) {
@@ -236,12 +237,12 @@ async function searchWithRipgrep(
         locations.push(new vscode.Location(uri, range));
       }
 
-      logInfo(`Ripgrep found ${locations.length} matches`);
+      logInfo(`Search complete: ${locations.length} matches`);
       resolve(locations);
     });
 
     proc.on('error', (error: Error) => {
-      logError(`Failed to spawn ripgrep:`, error.message);
+      logError('Failed to spawn ripgrep', error);
       reject(new Error('Failed to execute ripgrep'));
     });
   });
@@ -358,7 +359,7 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
       try {
         searchQuery = transformPath(transform, relativeFilePath);
       } catch (error) {
-        logError('Transform failed:', error);
+        logError('Transform failed', error);
         errors.push(error instanceof Error ? error.message : String(error));
         continue;
       }
@@ -378,7 +379,7 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
         );
         locations.push(...matches);
       } catch (error) {
-        logError('Search failed:', error);
+        logError('Search failed', error);
         errors.push(error instanceof Error ? error.message : String(error));
       }
     }
@@ -408,7 +409,7 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
           );
           locations.push(...matches);
         } catch (error) {
-          logError('Relative search failed:', error);
+          logError('Relative search failed', error);
           errors.push(error instanceof Error ? error.message : String(error));
         }
       }
