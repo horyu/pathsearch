@@ -1,4 +1,4 @@
-import test from 'node:test';
+import testBase, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
@@ -29,7 +29,17 @@ if (!rgAvailable) {
     stderr: rgCheck.stderr?.toString()
   });
   console.warn('[integration] rg が見つからない場合は、ユーザー側で test:bridge を起動してください。');
+
+  testBase('integration: rg unavailable', t => {
+    t.skip('rg が見つからないためスキップ');
+  });
 }
+
+const test = rgAvailable
+  ? (name: string, fn: (t: TestContext) => void | Promise<void>) => testBase(name, fn)
+  : () => {
+      // rg unavailable: tests are skipped via the single test below
+    };
 
 function toPosix(value: string): string {
   return value.replace(/\\/g, '/');
@@ -74,12 +84,7 @@ function runRipgrep(options: {
   }));
 }
 
-test('transform: コンポーネント参照を拾える', t => {
-  if (!rgAvailable) {
-    t.skip('rg が見つからないためスキップ');
-    return;
-  }
-
+test('transform: コンポーネント参照を拾える', () => {
   const componentPath = path.join(fixturesRoot, 'components', 'Button.tsx');
   const relativePath = toPosix(path.relative(repoRoot, componentPath));
   const query = transformPath(
@@ -103,12 +108,7 @@ test('transform: コンポーネント参照を拾える', t => {
   assert.deepEqual(matchFiles, ['src/integration/fixtures/app/App.tsx']);
 });
 
-test('relative: fileStem で正しい参照のみ残る', t => {
-  if (!rgAvailable) {
-    t.skip('rg が見つからないためスキップ');
-    return;
-  }
-
+test('relative: fileStem で正しい参照のみ残る', () => {
   const targetPath = path.join(fixturesRoot, 'styles', 'button.scss');
   const relativePath = toPosix(path.relative(repoRoot, targetPath));
   const query = buildRelativeSearchQuery(relativePath, { matchTarget: 'fileStem', maxDepth: 3 });
@@ -131,12 +131,7 @@ test('relative: fileStem で正しい参照のみ残る', t => {
   ]);
 });
 
-test('transform: searchAsRegex=true で正規表現として検索できる', t => {
-  if (!rgAvailable) {
-    t.skip('rg が見つからないためスキップ');
-    return;
-  }
-
+test('transform: searchAsRegex=true で正規表現として検索できる', () => {
   const matches = runRipgrep({
     query: 'from [\'"].*/Button',
     isRegex: true,
@@ -148,12 +143,7 @@ test('transform: searchAsRegex=true で正規表現として検索できる', t 
   assert.deepEqual(matchFiles, ['src/integration/fixtures/app/App.tsx']);
 });
 
-test('transform: searchScope と filePattern の複数指定で絞り込みできる', t => {
-  if (!rgAvailable) {
-    t.skip('rg が見つからないためスキップ');
-    return;
-  }
-
+test('transform: searchScope と filePattern の複数指定で絞り込みできる', () => {
   const matches = runRipgrep({
     query: '@import',
     isRegex: false,
@@ -172,12 +162,7 @@ test('transform: searchScope と filePattern の複数指定で絞り込みで�
   ]);
 });
 
-test('transform: maxResults は rg 側でファイルごとの上限として効く', t => {
-  if (!rgAvailable) {
-    t.skip('rg が見つからないためスキップ');
-    return;
-  }
-
+test('transform: maxResults は rg 側でファイルごとの上限として効く', () => {
   const matches = runRipgrep({
     query: '.button',
     isRegex: false,
@@ -189,12 +174,7 @@ test('transform: maxResults は rg 側でファイルごとの上限として効
   assert.equal(matches.length, 2);
 });
 
-test('relative: maxDepth=0 と >0 で結果が変わる', t => {
-  if (!rgAvailable) {
-    t.skip('rg が見つからないためスキップ');
-    return;
-  }
-
+test('relative: maxDepth=0 と >0 で結果が変わる', () => {
   const targetPath = path.join(fixturesRoot, 'styles', 'button.scss');
   const relativePath = toPosix(path.relative(repoRoot, targetPath));
   const candidates = runRipgrep({
@@ -221,12 +201,7 @@ test('relative: maxDepth=0 と >0 で結果が変わる', t => {
   ]);
 });
 
-test('transform: 変換結果が空文字でも検索が実行される', t => {
-  if (!rgAvailable) {
-    t.skip('rg が見つからないためスキップ');
-    return;
-  }
-
+test('transform: 変換結果が空文字でも検索が実行される', () => {
   const componentPath = path.join(fixturesRoot, 'components', 'Button.tsx');
   const relativePath = toPosix(path.relative(repoRoot, componentPath));
   const query = transformPath(
