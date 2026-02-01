@@ -28,7 +28,7 @@ export function buildRelativeSearchQuery(relativeFilePath: string, config: Relat
     throw new Error('Relative match target is empty');
   }
   const escapedToken = escapeRegex(token);
-  return '(?:\\.\\.?/)+[^"\'`\\s]*' + escapedToken + '[^"\'`\\s]*';
+  return '((?:\\./|\\.\\./)[^"\'`\\s]*' + escapedToken + '[^"\'`\\s]*)';
 }
 
 function normalizeFsPath(value: string): string {

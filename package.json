@@ -250,12 +250,13 @@
     "watch": "pnpm run build:base --sourcemap --watch",
     "typecheck": "tsc && tsc -p tsconfig.test.json",
     "typecheck:watch": "tsc --noEmit --watch",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "lint": "eslint src/**/*.ts scripts/*.mjs",
+    "lint:fix": "eslint src/**/*.ts scripts/*.mjs --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.mjs\"",
     "package": "npx @vscode/vsce package --no-dependencies",
-    "test": "node --test --test-isolation=none --experimental-strip-types"
+    "test": "node --test --test-isolation=none --experimental-strip-types \"src/**/*.test.ts\"",
+    "test:bridge": "node scripts/test-bridge.mjs"
   },
   "dependencies": {
     "minimatch": "^10.1.1"

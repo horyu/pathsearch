@@ -4,6 +4,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { getMatchingRules } from './lib/rules';
 import { buildRelativeSearchQuery, isRelativeMatchTarget, isRelativeReferenceMatch } from './lib/relativeSearch';
+import { buildRipgrepArgs } from './lib/ripgrepArgs';
+import { parseRipgrepMatches } from './lib/ripgrepParse';
 import { transformPath } from './lib/transformPath';
 import type { RelativeSearchConfig, RuleConfig } from './lib/types';
 
@@ -153,21 +155,6 @@ async function searchWithRipgrep(
 
   logInfo(`Starting search for "${searchQuery}" (regex: ${isRegex})`);
 
-  const args: string[] = [
-    '--json',
-    '--line-number',
-    '--column',
-    '--max-count',
-    String(maxResults),
-    '--max-filesize',
-    '10M',
-    '--stats'
-  ];
-
-  if (!isRegex) {
-    args.push('--fixed-strings');
-  }
-
   const searchPaths = searchScope
     ? (Array.isArray(searchScope) ? searchScope : [searchScope]).map(scope => (scope === '' ? '.' : scope))
     : ['.'];
@@ -190,13 +177,15 @@ async function searchWithRipgrep(
     }
   }
 
-  const globArgs: string[] = [];
-
-  filePatterns.forEach(pattern => {
-    globArgs.push('--glob', pattern);
+  const args = buildRipgrepArgs({
+    searchQuery,
+    isRegex,
+    maxResults,
+    searchScope: searchPaths,
+    filePattern: filePatterns,
+    includeStats: true,
+    maxFileSize: '10M'
   });
-
-  args.push(...globArgs, '--', searchQuery, ...searchPaths);
 
   logInfo(`Executing in ${workspaceRoot}: ${rgPath} ${args.map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
 
@@ -244,62 +233,41 @@ async function searchWithRipgrep(
         resolve(locations);
         return;
       }
+      const matches = parseRipgrepMatches(stdout);
+      logInfo(`Parsing ${matches.length} matches from ripgrep output`);
 
-      const lines = stdout
-        .trim()
-        .split('\n')
-        .filter(line => line.length > 0);
-      logInfo(`Parsing ${lines.length} lines of ripgrep output`);
-
-      for (const line of lines) {
+      for (const match of matches) {
         if (locations.length >= maxResults) {
           break;
         }
 
-        try {
-          const result = JSON.parse(line);
-
-          if (result.type === 'match' && result.data) {
-            const data = result.data;
-
-            const relativePath = data.path.text;
-            if (relativePath.includes('..') || path.isAbsolute(relativePath)) {
-              logWarn(`Suspicious path detected: ${relativePath}`);
-              continue;
-            }
-
-            const filePath = path.resolve(workspaceRoot, relativePath);
-
-            if (!filePath.startsWith(workspaceRoot)) {
-              logWarn(`Path outside workspace: ${filePath}`);
-              continue;
-            }
-
-            const uri = vscode.Uri.file(filePath);
-
-            const line = (data.line_number || 1) - 1;
-            const submatch = data.submatches?.[0];
-            const column = submatch?.start || 0;
-            const endColumn = submatch?.end || column + 1;
-
-            if (relativeOptions && submatch && data.lines?.text) {
-              const matchText = data.lines.text.slice(submatch.start, submatch.end);
-              if (
-                !isRelativeReferenceMatch(matchText, filePath, relativeOptions.targetFilePath, relativeOptions.config)
-              ) {
-                continue;
-              }
-            } else if (relativeOptions) {
-              continue;
-            }
-
-            const range = new vscode.Range(new vscode.Position(line, column), new vscode.Position(line, endColumn));
-
-            locations.push(new vscode.Location(uri, range));
-          }
-        } catch {
-          // Ignore JSON parse errors (ripgrep warnings, etc.)
+        const relativePath = match.relativePath;
+        if (relativePath.includes('..') || path.isAbsolute(relativePath)) {
+          logWarn(`Suspicious path detected: ${relativePath}`);
+          continue;
         }
+
+        const filePath = path.resolve(workspaceRoot, relativePath);
+
+        if (!filePath.startsWith(workspaceRoot)) {
+          logWarn(`Path outside workspace: ${filePath}`);
+          continue;
+        }
+
+        if (
+          relativeOptions &&
+          !isRelativeReferenceMatch(match.matchText, filePath, relativeOptions.targetFilePath, relativeOptions.config)
+        ) {
+          continue;
+        }
+
+        const uri = vscode.Uri.file(filePath);
+        const range = new vscode.Range(
+          new vscode.Position(match.lineNumber, match.column),
+          new vscode.Position(match.lineNumber, match.endColumn)
+        );
+
+        locations.push(new vscode.Location(uri, range));
       }
 
       logInfo(`Ripgrep found ${locations.length} matches`);
