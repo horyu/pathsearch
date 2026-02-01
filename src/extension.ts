@@ -468,10 +468,9 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
   await vscode.commands.executeCommand('editor.action.showReferences', editor.document.uri, position, locations);
 
   const limitReached = locations.length >= maxResults;
-  const message = limitReached
-    ? `Found ${locations.length}+ match(es) (limit reached)`
-    : `Found ${locations.length} match(es)`;
-  vscode.window.showInformationMessage(message);
+  if (limitReached) {
+    vscode.window.showInformationMessage(`Found ${locations.length}+ match(es) (limit reached)`);
+  }
 }
 
 export function activate(context: vscode.ExtensionContext) {
