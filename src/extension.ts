@@ -1,14 +1,13 @@
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { initializeOutputChannel, logError, logInfo, logWarn } from './lib/logging';
 import { getMatchingRules } from './lib/rules';
-import { buildRelativeSearchQuery, isRelativeMatchTarget, isRelativeReferenceMatch } from './lib/relativeSearch';
-import { buildRipgrepArgs } from './lib/ripgrepArgs';
-import { parseRipgrepMatches } from './lib/ripgrepParse';
+import { buildRelativeSearchQuery, isRelativeMatchTarget } from './lib/relativeSearch';
 import { transformPath } from './lib/transformPath';
-import type { RelativeSearchConfig, RuleConfig } from './lib/types';
+import { searchWithRipgrep } from './lib/ripgrepRunner';
+import type { RuleConfig } from './lib/types';
 
 let workspaceState: vscode.Memento | undefined;
 
@@ -142,151 +141,6 @@ async function checkRipgrepAvailable(rgPath: string): Promise<boolean> {
   });
 }
 
-async function searchWithRipgrep(
-  searchQuery: string,
-  isRegex: boolean,
-  maxResults: number,
-  rgPath: string,
-  workspaceRoot?: string,
-  searchScope?: string | string[],
-  filePattern?: string | string[],
-  relativeOptions?: { targetFilePath: string; config: RelativeSearchConfig }
-): Promise<vscode.Location[]> {
-  const locations: vscode.Location[] = [];
-
-  if (!workspaceRoot) {
-    return locations;
-  }
-
-  logInfo(`Search start: "${searchQuery}" (regex: ${isRegex})`);
-
-  const searchPaths = searchScope
-    ? (Array.isArray(searchScope) ? searchScope : [searchScope]).map(scope => (scope === '' ? '.' : scope))
-    : ['.'];
-  for (const p of searchPaths) {
-    if (p.includes('..') || path.isAbsolute(p) || p.includes('*')) {
-      logError(`Invalid search path: ${p}`);
-      throw new Error('Invalid search path');
-    }
-  }
-
-  const filePatterns = filePattern ? (Array.isArray(filePattern) ? filePattern : [filePattern]) : [];
-  for (const pattern of filePatterns) {
-    if (pattern.includes('--')) {
-      logError(`Invalid file pattern contains "--": ${pattern}`);
-      throw new Error('Invalid file pattern');
-    }
-    if (!/^[\w*.\-/{}!,]+$/.test(pattern)) {
-      logError(`Invalid file pattern: ${pattern}`);
-      throw new Error('Invalid file pattern');
-    }
-  }
-
-  const args = buildRipgrepArgs({
-    searchQuery,
-    isRegex,
-    maxResults,
-    searchScope: searchPaths,
-    filePattern: filePatterns,
-    includeStats: true,
-    maxFileSize: '10M'
-  });
-
-  logInfo(`Executing in ${workspaceRoot}: ${rgPath} ${args.map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
-
-  return new Promise((resolve, reject) => {
-    const proc: ChildProcess = spawn(rgPath, args, {
-      cwd: workspaceRoot
-    });
-
-    let stdout = '';
-    let stderr = '';
-    let dataSize = 0;
-    const maxDataSize = 5 * 1024 * 1024; // 5MB制限
-
-    if (!proc.stdout || !proc.stderr) {
-      reject(new Error('Failed to create process streams'));
-      return;
-    }
-
-    proc.stdout.on('data', (data: Buffer) => {
-      dataSize += data.length;
-      if (dataSize > maxDataSize) {
-        proc.kill();
-        reject(new Error('Output size exceeded'));
-        return;
-      }
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data: Buffer) => {
-      const chunk = data.toString();
-      stderr += chunk;
-      logError(`ripgrep stderr: ${chunk}`);
-    });
-
-    proc.on('close', (code: number | null) => {
-      if (code !== 0 && code !== 1) {
-        logError(`Ripgrep exited with code ${code}`);
-        if (stderr) {
-          logError(`Ripgrep stderr: ${stderr.substring(0, 200)}`);
-        }
-        reject(new Error('Ripgrep search failed'));
-        return;
-      }
-
-      if (code === 1) {
-        logInfo('Search complete: 0 matches');
-        resolve(locations);
-        return;
-      }
-      const matches = parseRipgrepMatches(stdout);
-
-      for (const match of matches) {
-        if (locations.length >= maxResults) {
-          break;
-        }
-
-        const relativePath = match.relativePath;
-        if (relativePath.includes('..') || path.isAbsolute(relativePath)) {
-          logWarn(`Suspicious path detected: ${relativePath}`);
-          continue;
-        }
-
-        const filePath = path.resolve(workspaceRoot, relativePath);
-
-        if (!filePath.startsWith(workspaceRoot)) {
-          logWarn(`Path outside workspace: ${filePath}`);
-          continue;
-        }
-
-        if (
-          relativeOptions &&
-          !isRelativeReferenceMatch(match.matchText, filePath, relativeOptions.targetFilePath, relativeOptions.config)
-        ) {
-          continue;
-        }
-
-        const uri = vscode.Uri.file(filePath);
-        const range = new vscode.Range(
-          new vscode.Position(match.lineNumber, match.column),
-          new vscode.Position(match.lineNumber, match.endColumn)
-        );
-
-        locations.push(new vscode.Location(uri, range));
-      }
-
-      logInfo(`Search complete: ${locations.length} matches`);
-      resolve(locations);
-    });
-
-    proc.on('error', (error: Error) => {
-      logError('Failed to spawn ripgrep', error);
-      reject(new Error('Failed to execute ripgrep'));
-    });
-  });
-}
-
 async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultiple: boolean }): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -408,15 +262,15 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
       logInfo(`Transformed query: ${searchQuery}, regex: ${useRegex}`);
 
       try {
-        const matches = await searchWithRipgrep(
+        const matches = await searchWithRipgrep({
           searchQuery,
-          useRegex,
-          remaining,
+          isRegex: useRegex,
+          maxResults: remaining,
           rgPath,
           workspaceRoot,
-          transform.searchScope,
-          transform.filePattern
-        );
+          searchScope: transform.searchScope,
+          filePattern: transform.filePattern
+        });
         locations.push(...matches);
       } catch (error) {
         logError('Search failed', error);
@@ -437,16 +291,16 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
           const searchQuery = buildRelativeSearchQuery(relativeFilePath, selectedRule.relative);
           logInfo(`Relative search query: ${searchQuery}`);
           const targetFilePath = path.resolve(workspaceRoot, relativeFilePath);
-          const matches = await searchWithRipgrep(
+          const matches = await searchWithRipgrep({
             searchQuery,
-            true,
-            remaining,
+            isRegex: true,
+            maxResults: remaining,
             rgPath,
             workspaceRoot,
-            selectedRule.relative.searchScope,
-            selectedRule.relative.filePattern,
-            { targetFilePath, config: selectedRule.relative }
-          );
+            searchScope: selectedRule.relative.searchScope,
+            filePattern: selectedRule.relative.filePattern,
+            relativeOptions: { targetFilePath, config: selectedRule.relative }
+          });
           locations.push(...matches);
         } catch (error) {
           logError('Relative search failed', error);
