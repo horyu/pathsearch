@@ -20,6 +20,17 @@ export default [
     }
   },
   {
+    files: ['src/lib/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['vscode']
+        }
+      ]
+    }
+  },
+  {
     ignores: ['out/**', 'node_modules/**', '*.js', '*.d.ts']
   }
 ];

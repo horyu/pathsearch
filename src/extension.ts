@@ -2,11 +2,11 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { initializeOutputChannel, logError, logInfo, logWarn } from './lib/logging';
+import { initializeOutputChannel, logError, logInfo, logWarn } from './logging';
 import { getMatchingRules } from './lib/rules';
 import { buildRelativeSearchQuery, isRelativeMatchTarget } from './lib/relativeSearch';
 import { transformPath } from './lib/transformPath';
-import { searchWithRipgrep } from './lib/ripgrepRunner';
+import { searchWithRipgrep } from './ripgrepRunner';
 import type { RuleConfig } from './lib/types';
 
 let workspaceState: vscode.Memento | undefined;

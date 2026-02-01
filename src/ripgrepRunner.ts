@@ -2,16 +2,16 @@ import { spawn, type ChildProcess } from 'child_process';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { logError, logInfo, logWarn } from './logging';
-import { buildRipgrepArgs } from './ripgrepArgs';
-import { parseRipgrepMatches } from './ripgrepParse';
-import type { RelativeSearchConfig } from './types';
-import { isRelativeReferenceMatch } from './relativeSearch';
+import { buildRipgrepArgs } from './lib/ripgrepArgs';
+import { parseRipgrepMatches } from './lib/ripgrepParse';
+import type { RelativeSearchConfig } from './lib/types';
+import { isRelativeReferenceMatch } from './lib/relativeSearch';
 import {
   normalizeFilePatterns,
   normalizeSearchScope,
   validateFilePatterns,
   validateSearchScope
-} from './ripgrepValidation';
+} from './lib/ripgrepValidation';
 
 type SearchOptions = {
   searchQuery: string;

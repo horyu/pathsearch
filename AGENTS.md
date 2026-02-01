@@ -8,7 +8,8 @@
 
 ## プロジェクト構成メモ
 
-- エントリポイントは `src/extension.ts`。主要ロジックは `src/lib/*` に分割されている
+- エントリポイントは `src/extension.ts`。VS Code 依存は `src/*`、純粋ロジックは `src/lib/*` に分割する
+- `src/lib/*` は単体テスト（`*.test.ts`）を追加して検証する
 
 ## テスト
 
