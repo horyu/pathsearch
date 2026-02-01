@@ -155,9 +155,9 @@ PathSearch は ripgrep を次の順で解決します:
 
 - **`rules[].match`**（minimatch）: `*` と `{a,b}` をサポート
 - **`transforms[].filePattern`**（rg `--glob`）: `*` と `{a,b}` をサポート
-- **`transforms[].searchScope`**: `*` / `{}` は不可（パスのみ）
+- **`transforms[].searchScope`**: `*` は不可、`{}` は可（相対パスのみ。`..` や絶対パスは不可）
 - **`relative.filePattern`**（rg `--glob`）: `*` と `{a,b}` をサポート
-- **`relative.searchScope`**: `*` / `{}` は不可（パスのみ）
+- **`relative.searchScope`**: `*` は不可、`{}` は可（相対パスのみ。`..` や絶対パスは不可）
 
 ### `pathsearch.showPickerOnMultiple`
 

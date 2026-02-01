@@ -155,9 +155,9 @@ Relative path search settings:
 
 - **`rules[].match`** (minimatch): supports `*` and `{a,b}`.
 - **`transforms[].filePattern`** (rg `--glob`): supports `*` and `{a,b}`.
-- **`transforms[].searchScope`**: does **not** support `*` or `{}` (paths only).
+- **`transforms[].searchScope`**: `*` is not supported, `{}` is allowed (relative paths only; no `..` or absolute paths).
 - **`relative.filePattern`** (rg `--glob`): supports `*` and `{a,b}`.
-- **`relative.searchScope`**: does **not** support `*` or `{}` (paths only).
+- **`relative.searchScope`**: `*` is not supported, `{}` is allowed (relative paths only; no `..` or absolute paths).
 
 ### `pathsearch.showPickerOnMultiple`
 
