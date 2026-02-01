@@ -28,7 +28,9 @@ if (!rgAvailable) {
     status: rgCheck.status,
     stderr: rgCheck.stderr?.toString()
   });
-  console.warn('[integration] rg が見つからない場合は、ユーザー側で test:bridge を起動してください。');
+  console.warn(
+    '[integration] rg が見つからない場合は、ユーザー側で test:bridge を起動し、Codex は pnpm run test:bridge:codex を使用してください。'
+  );
 
   testBase('integration: rg unavailable', t => {
     t.skip('rg が見つからないためスキップ');
