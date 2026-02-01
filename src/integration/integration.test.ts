@@ -40,6 +40,7 @@ function runRipgrep(options: {
   isRegex: boolean;
   searchScope: string | string[];
   filePattern?: string | string[];
+  maxResults?: number;
 }): RipgrepMatch[] {
   const patterns = options.filePattern
     ? Array.isArray(options.filePattern)
@@ -50,7 +51,7 @@ function runRipgrep(options: {
   const args = buildRipgrepArgs({
     searchQuery: options.query,
     isRegex: options.isRegex,
-    maxResults: 200,
+    maxResults: options.maxResults ?? 200,
     searchScope: searchPaths,
     filePattern: patterns,
     maxFileSize: '1M'
@@ -128,4 +129,122 @@ test('relative: fileStem で正しい参照のみ残る', t => {
     'src/integration/fixtures/pages/home.scss',
     'src/integration/fixtures/styles/theme.scss'
   ]);
+});
+
+test('transform: searchAsRegex=true で正規表現として検索できる', t => {
+  if (!rgAvailable) {
+    t.skip('rg が見つからないためスキップ');
+    return;
+  }
+
+  const matches = runRipgrep({
+    query: 'from [\'"].*/Button',
+    isRegex: true,
+    searchScope: 'src/integration/fixtures/app',
+    filePattern: '**/*.tsx'
+  });
+
+  const matchFiles = Array.from(new Set(matches.map(match => toPosix(path.relative(repoRoot, match.filePath)))));
+  assert.deepEqual(matchFiles, ['src/integration/fixtures/app/App.tsx']);
+});
+
+test('transform: searchScope と filePattern の複数指定で絞り込みできる', t => {
+  if (!rgAvailable) {
+    t.skip('rg が見つからないためスキップ');
+    return;
+  }
+
+  const matches = runRipgrep({
+    query: '@import',
+    isRegex: false,
+    searchScope: [
+      'src/integration/fixtures/styles',
+      'src/integration/fixtures/pages',
+      'src/integration/fixtures/other'
+    ],
+    filePattern: ['**/*.scss', '!**/other/**']
+  });
+
+  const matchFiles = Array.from(new Set(matches.map(match => toPosix(path.relative(repoRoot, match.filePath))))).sort();
+  assert.deepEqual(matchFiles, [
+    'src/integration/fixtures/pages/home.scss',
+    'src/integration/fixtures/styles/theme.scss'
+  ]);
+});
+
+test('transform: maxResults は rg 側でファイルごとの上限として効く', t => {
+  if (!rgAvailable) {
+    t.skip('rg が見つからないためスキップ');
+    return;
+  }
+
+  const matches = runRipgrep({
+    query: '.button',
+    isRegex: false,
+    searchScope: ['src/integration/fixtures/styles', 'src/integration/fixtures/other'],
+    filePattern: '**/*.scss',
+    maxResults: 1
+  });
+
+  assert.equal(matches.length, 2);
+});
+
+test('relative: maxDepth=0 と >0 で結果が変わる', t => {
+  if (!rgAvailable) {
+    t.skip('rg が見つからないためスキップ');
+    return;
+  }
+
+  const targetPath = path.join(fixturesRoot, 'styles', 'button.scss');
+  const relativePath = toPosix(path.relative(repoRoot, targetPath));
+  const candidates = runRipgrep({
+    query: buildRelativeSearchQuery(relativePath, { matchTarget: 'fileStem', maxDepth: 3 }),
+    isRegex: true,
+    searchScope: 'src/integration/fixtures',
+    filePattern: '**/*.scss'
+  });
+
+  const filteredDepth0 = candidates.filter(match =>
+    isRelativeReferenceMatch(match.matchText, match.filePath, targetPath, { matchTarget: 'fileStem', maxDepth: 0 })
+  );
+  const filteredDepth1 = candidates.filter(match =>
+    isRelativeReferenceMatch(match.matchText, match.filePath, targetPath, { matchTarget: 'fileStem', maxDepth: 1 })
+  );
+
+  const filesDepth0 = filteredDepth0.map(match => toPosix(path.relative(repoRoot, match.filePath))).sort();
+  const filesDepth1 = filteredDepth1.map(match => toPosix(path.relative(repoRoot, match.filePath))).sort();
+
+  assert.deepEqual(filesDepth0, ['src/integration/fixtures/styles/theme.scss']);
+  assert.deepEqual(filesDepth1, [
+    'src/integration/fixtures/pages/home.scss',
+    'src/integration/fixtures/styles/theme.scss'
+  ]);
+});
+
+test('transform: 変換結果が空文字でも検索が実行される', t => {
+  if (!rgAvailable) {
+    t.skip('rg が見つからないためスキップ');
+    return;
+  }
+
+  const componentPath = path.join(fixturesRoot, 'components', 'Button.tsx');
+  const relativePath = toPosix(path.relative(repoRoot, componentPath));
+  const query = transformPath(
+    {
+      extractFrom: '.*/components/(.*)\\.tsx$',
+      searchFor: ''
+    },
+    relativePath
+  );
+
+  const matches = runRipgrep({
+    query,
+    isRegex: false,
+    searchScope: 'src/integration/fixtures/app',
+    filePattern: '**/*.tsx',
+    maxResults: 1
+  });
+
+  assert.equal(query, '');
+  assert.equal(matches.length, 1);
 });
