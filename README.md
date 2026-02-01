@@ -403,7 +403,7 @@ PathSearch is designed with security in mind:
 - Workspace boundary enforcement
 - Secure handling of external commands
 
-All search rules are defined in your workspace settings, giving you full control and visibility.
+All search rules can be defined in either workspace or user settings, giving you full control and visibility.
 
 ## License
 
