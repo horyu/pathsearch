@@ -83,6 +83,39 @@
                 "type": "string",
                 "description": "Glob pattern to match files (required; empty string matches nothing)"
               },
+              "matchWorkspace": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "description": "Workspace name to enable this rule"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Workspace names to enable this rule"
+                  },
+                  {
+                    "type": "object",
+                    "required": ["type", "values"],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["glob", "regex"]
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "description": "Match workspace names using glob or regex"
+                  }
+                ],
+                "description": "Limit this rule to specific workspace names"
+              },
               "maxResults": {
                 "type": "number",
                 "minimum": 1,

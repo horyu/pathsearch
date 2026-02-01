@@ -19,6 +19,7 @@ export interface RuleConfig {
   name: string;
   match: string;
   maxResults?: number;
+  matchWorkspace?: string | string[] | { type: 'glob' | 'regex'; values: string[] };
   transforms?: TransformConfig[];
   relative?: RelativeSearchConfig;
 }

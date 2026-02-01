@@ -319,7 +319,8 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
   }
 
   const relativeFilePath = getRelativeFilePath(editor, workspaceFolder);
-  const matchingRules = getMatchingRules(rules, relativeFilePath);
+  const workspaceName = workspaceFolder.name || path.basename(workspaceFolder.uri.fsPath);
+  const matchingRules = getMatchingRules(rules, relativeFilePath, workspaceName);
 
   if (matchingRules.length === 0) {
     vscode.window.showWarningMessage(`No rule matches "${relativeFilePath}"`);

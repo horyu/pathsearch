@@ -94,9 +94,43 @@ Array of search rules. Each rule includes the following (at least one of `transf
 
 - **`name`** (required): Rule display name
 - **`match`** (required): Glob pattern to match files (empty string matches nothing)
+- **`matchWorkspace`** (optional): Limit this rule to specific workspace names
 - **`maxResults`** (optional): Override `pathsearch.maxResults` for this rule
 - **`transforms`** (optional): Array of transform definitions
 - **`relative`** (optional): Relative path search settings
+
+#### `matchWorkspace`
+
+Limit a rule to specific workspace names:
+
+```json
+{
+  "name": "Monorepo only",
+  "match": "**/*.ts",
+  "matchWorkspace": ["my-monorepo", "client-app"],
+  "transforms": []
+}
+```
+
+Glob or regex matching (by workspace name):
+
+```json
+{
+  "name": "App workspaces",
+  "match": "**/*.ts",
+  "matchWorkspace": { "type": "glob", "values": ["*-app"] },
+  "transforms": []
+}
+```
+
+```json
+{
+  "name": "Corp workspaces",
+  "match": "**/*.ts",
+  "matchWorkspace": { "type": "regex", "values": ["^corp-"] },
+  "transforms": []
+}
+```
 
 #### `transforms` (array)
 

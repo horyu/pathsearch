@@ -94,9 +94,43 @@ PathSearch は ripgrep を次の順で解決します:
 
 - **`name`**（必須）: ルールの表示名
 - **`match`**（必須）: 対象ファイルのGlobパターン（空文字は何にもマッチしません）
+- **`matchWorkspace`**（オプション）: ルールを特定のワークスペース名に限定
 - **`maxResults`**（オプション）: ルール単位の最大結果数（`pathsearch.maxResults` を上書き）
 - **`transforms`**（オプション）: 変換定義の配列
 - **`relative`**（オプション）: 相対パス検索の設定
+
+#### `matchWorkspace`
+
+特定のワークスペース名だけでルールを有効化します:
+
+```json
+{
+  "name": "Monorepo only",
+  "match": "**/*.ts",
+  "matchWorkspace": ["my-monorepo", "client-app"],
+  "transforms": []
+}
+```
+
+ワークスペース名に対して glob / 正規表現でも指定できます:
+
+```json
+{
+  "name": "App workspaces",
+  "match": "**/*.ts",
+  "matchWorkspace": { "type": "glob", "values": ["*-app"] },
+  "transforms": []
+}
+```
+
+```json
+{
+  "name": "Corp workspaces",
+  "match": "**/*.ts",
+  "matchWorkspace": { "type": "regex", "values": ["^corp-"] },
+  "transforms": []
+}
+```
 
 #### `transforms`（配列）
 
