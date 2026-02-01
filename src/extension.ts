@@ -17,12 +17,16 @@ function getRelativeFilePath(editor: vscode.TextEditor, workspaceFolder: vscode.
   return path.relative(workspaceFolder.uri.fsPath, filePath);
 }
 
-async function getRipgrepPath(): Promise<string> {
-  const config = vscode.workspace.getConfiguration('pathsearch');
+async function getRipgrepPath(workspaceFolder?: vscode.WorkspaceFolder): Promise<string> {
+  const config = workspaceFolder
+    ? vscode.workspace.getConfiguration('pathsearch', workspaceFolder.uri)
+    : vscode.workspace.getConfiguration('pathsearch');
   const customPath = config.get<string>('ripgrepPath', '');
   const inspected = config.inspect<string>('ripgrepPath');
   const hasWorkspaceRipgrepPath = Boolean(inspected?.workspaceValue ?? inspected?.workspaceFolderValue);
-  const confirmationKey = 'pathsearch.confirmedWorkspaceRipgrepPath';
+  const confirmationKey = workspaceFolder
+    ? `pathsearch.confirmedWorkspaceRipgrepPath:${workspaceFolder.uri.toString()}`
+    : 'pathsearch.confirmedWorkspaceRipgrepPath';
   const confirmedPath = workspaceState?.get<string>(confirmationKey);
 
   if (!customPath) {
@@ -294,13 +298,13 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
     return;
   }
 
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
   if (!workspaceFolder) {
-    vscode.window.showErrorMessage('No workspace folder open');
+    vscode.window.showErrorMessage('No workspace folder found for the active file');
     return;
   }
 
-  const config = vscode.workspace.getConfiguration('pathsearch');
+  const config = vscode.workspace.getConfiguration('pathsearch', workspaceFolder.uri);
   const rules = config.get<RuleConfig[]>('rules', []);
   if (rules.length === 0) {
     vscode.window.showWarningMessage('No rules configured. Please add rules in settings.');
@@ -354,7 +358,7 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
   const workspaceRoot = workspaceFolder.uri.fsPath;
   let rgPath: string;
   try {
-    rgPath = await getRipgrepPath();
+    rgPath = await getRipgrepPath(workspaceFolder);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to validate ripgrep path';
     vscode.window.showErrorMessage(`PathSearch: ${message}`);
