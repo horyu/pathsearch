@@ -14,8 +14,9 @@
 
 - 単体: `pnpm test` は node:test を使用
 - 統合: ripgrep 実行が必要なため、Codex からは `scripts/test-bridge.mjs` 経由でユーザー環境で走らせる前提
-  - `scripts/test-bridge.mjs` は常駐起動される想定で、request/result は `tmp/` を使用する
-  - 統合テストは `pnpm test` でスキップされることがあるため、必要ならユーザー側で `pnpm test:bridge` を起動してもらい、`tmp/test.request.json`（最小 `{}` でOK。削除時は再作成）を更新する流れで実行する
+  - `scripts/test-bridge.mjs` は常駐起動（request/result は `tmp/`）。Codex は `tmp/test.request.json` を更新して実行をリクエストする
+  - `pnpm test` で統合がスキップされる場合は、ユーザー側で `pnpm test:bridge` を起動し、`tmp/test.request.json`（最小 `{}`。削除時は再作成）を更新して実行する
+  - 統合テスト（`src/integration/**`）を変更した場合は、Codex が `tmp/test.request.json` を更新して bridge を実行する
 
 ## 仕様・運用の注意
 
