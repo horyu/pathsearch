@@ -10,6 +10,8 @@ import { parseRipgrepMatches } from './lib/ripgrepParse';
 import { transformPath } from './lib/transformPath';
 import type { RelativeSearchConfig, RuleConfig } from './lib/types';
 
+let workspaceState: vscode.Memento | undefined;
+
 function getRelativeFilePath(editor: vscode.TextEditor, workspaceFolder: vscode.WorkspaceFolder): string {
   const filePath = editor.document.uri.fsPath;
   return path.relative(workspaceFolder.uri.fsPath, filePath);
@@ -18,6 +20,10 @@ function getRelativeFilePath(editor: vscode.TextEditor, workspaceFolder: vscode.
 async function getRipgrepPath(): Promise<string> {
   const config = vscode.workspace.getConfiguration('pathsearch');
   const customPath = config.get<string>('ripgrepPath', '');
+  const inspected = config.inspect<string>('ripgrepPath');
+  const hasWorkspaceRipgrepPath = Boolean(inspected?.workspaceValue ?? inspected?.workspaceFolderValue);
+  const confirmationKey = 'pathsearch.confirmedWorkspaceRipgrepPath';
+  const confirmedPath = workspaceState?.get<string>(confirmationKey);
 
   if (!customPath) {
     const hasPathRipgrep = await checkRipgrepAvailable('rg');
@@ -31,6 +37,19 @@ async function getRipgrepPath(): Promise<string> {
     }
 
     throw new Error('Ripgrep not found in PATH or VS Code bundle');
+  }
+
+  if (customPath && hasWorkspaceRipgrepPath && confirmedPath !== customPath) {
+    const confirm = await vscode.window.showWarningMessage(
+      'PathSearch is configured to run a workspace-defined ripgrepPath. Only proceed if you trust this workspace.',
+      'Run Anyway',
+      'Cancel'
+    );
+    if (confirm !== 'Run Anyway') {
+      logWarn('Aborted running workspace-defined ripgrepPath.');
+      throw new Error('Cancelled running workspace-defined ripgrepPath');
+    }
+    await workspaceState?.update(confirmationKey, customPath);
   }
 
   if (!/^[a-zA-Z0-9\-_/.:\\]+$/.test(customPath)) {
@@ -453,6 +472,7 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
 
 export function activate(context: vscode.ExtensionContext) {
   initializeOutputChannel(context);
+  workspaceState = context.workspaceState;
 
   // Find References: respects showPickerOnMultiple
   context.subscriptions.push(
