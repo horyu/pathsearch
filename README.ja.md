@@ -24,7 +24,7 @@ PathSearch は ripgrep を次の順で解決します:
 2. PATH の `rg`
 3. VS Code 同梱の `app/node_modules/@vscode/ripgrep/bin`（VS Code のバージョンでパスが変わる可能性があります）
 
-いずれも利用できない場合は、[公式インストールガイド](https://github.com/BurntSushi/ripgrep#installation)でインストールしてください。
+いずれも利用できない場合は、[公式インストールガイド](https://github.com/BurntSushi/ripgrep#installation)でインストールし、PATH に通すか `pathsearch.ripgrepPath` で実行ファイルのパスを指定してください。
 
 ## 使い方
 

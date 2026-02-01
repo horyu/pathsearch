@@ -24,7 +24,7 @@ PathSearch uses ripgrep in the following order:
 2. `rg` from PATH
 3. VS Code bundled `app/node_modules/@vscode/ripgrep/bin` (path may change between VS Code versions)
 
-If none are available, install ripgrep using the [official installation guide](https://github.com/BurntSushi/ripgrep#installation).
+If none are available, install ripgrep using the [official installation guide](https://github.com/BurntSushi/ripgrep#installation), then add it to your PATH or set `pathsearch.ripgrepPath` to the executable path.
 
 ## Usage
 
