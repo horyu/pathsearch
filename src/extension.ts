@@ -322,7 +322,7 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
   const position = editor.selection.active;
   await vscode.commands.executeCommand('editor.action.showReferences', editor.document.uri, position, locations);
   const closeDisposable = vscode.window.onDidChangeActiveTextEditor(() => {
-    void closeReferencePeek();
+    void vscode.commands.executeCommand('closeReferenceSearch');
     closeDisposable.dispose();
   });
 
@@ -330,10 +330,6 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
   if (limitReached) {
     vscode.window.showInformationMessage(`Found ${locations.length}+ match(es) (limit reached)`);
   }
-}
-
-async function closeReferencePeek(): Promise<void> {
-  void vscode.commands.executeCommand('closeReferenceSearch');
 }
 
 export function activate(context: vscode.ExtensionContext) {
