@@ -43,8 +43,14 @@ async function getRipgrepPath(workspaceFolder?: vscode.WorkspaceFolder): Promise
   }
 
   if (customPath && hasWorkspaceRipgrepPath && confirmedPath !== customPath) {
+    if (!vscode.workspace.isTrusted) {
+      const message = 'Workspace is not trusted. Trust the workspace or move ripgrepPath to user settings.';
+      logWarn(message);
+      throw new Error(message);
+    }
+
     const confirm = await vscode.window.showWarningMessage(
-      'PathSearch is configured to run a workspace-defined ripgrepPath. Only proceed if you trust this workspace.',
+      `PathSearch is configured to run a workspace-defined ripgrepPath: ${customPath}. Only proceed if you trust this workspace.`,
       'Run Anyway',
       'Cancel'
     );
