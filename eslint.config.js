@@ -2,6 +2,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
+/** @type {import('eslint').Linter.Config[]} */
 export default [
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -25,7 +26,18 @@ export default [
       'no-restricted-imports': [
         'error',
         {
-          paths: ['vscode']
+          paths: [
+            {
+              name: 'vscode',
+              message: 'VS Code 依存は src/ 配下に配置してください。'
+            }
+          ],
+          patterns: [
+            {
+              group: ['../*', '../**'],
+              message: 'src/lib は src/ 直下に依存しないでください。'
+            }
+          ]
         }
       ]
     }
