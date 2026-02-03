@@ -1,11 +1,15 @@
 {
   "name": "pathsearch",
   "displayName": "PathSearch",
-  "description": "Transform file paths to search queries with customizable patterns",
+  "description": "Transform file paths to search queries with customizable patterns and view results in a Peek view",
   "version": "0.1.0",
-  "publisher": "local",
+  "publisher": "horyu",
   "icon": "assets/icon128.png",
   "license": "WTFPL",
+  "bugs": {
+    "url": "https://github.com/horyu/pathsearch/issues"
+  },
+  "homepage": "https://github.com/horyu/pathsearch/blob/main/README.md",
   "repository": {
     "type": "git",
     "url": "https://github.com/horyu/pathsearch"
