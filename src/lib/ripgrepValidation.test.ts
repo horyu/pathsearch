@@ -19,9 +19,9 @@ test('validateSearchScope: .. と絶対パスと * を拒否', () => {
   assert.throws(() => validateSearchScope(['src/*']));
 });
 
-test('validateSearchScope: 相対パスと {} を許可', () => {
+test('validateSearchScope: 相対パスは許可し {} は拒否', () => {
   assert.doesNotThrow(() => validateSearchScope(['src/app']));
-  assert.doesNotThrow(() => validateSearchScope(['src/{app,web}']));
+  assert.throws(() => validateSearchScope(['src/{app,web}']));
 });
 
 test('normalizeFilePatterns: 単数と複数', () => {

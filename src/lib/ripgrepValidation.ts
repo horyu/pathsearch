@@ -10,7 +10,7 @@ export function normalizeSearchScope(searchScope?: string | string[]): string[] 
 
 export function validateSearchScope(searchPaths: string[]): void {
   for (const p of searchPaths) {
-    if (p.includes('..') || path.isAbsolute(p) || p.includes('*')) {
+    if (p.includes('..') || path.isAbsolute(p) || p.includes('*') || /[{}]/.test(p)) {
       throw new Error(`Invalid search path: ${p}`);
     }
   }

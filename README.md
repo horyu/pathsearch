@@ -140,7 +140,7 @@ Each transform includes:
 - **`searchFor`** (required): Replacement pattern (use `$1`, `$2` for capture groups)
 - **`searchAsRegex`** (optional): Use the result as a regex pattern in ripgrep search
 - **`searchScope`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
-- **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.twig"` or `["**/*.twig", "**/*.html"]`)
+- **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.twig"`, `"**/*.{scss,css}"` or `["**/*.twig", "**/*.html"]`)
 
 #### `relative` (object)
 
@@ -149,15 +149,7 @@ Relative path search settings:
 - **`matchTarget`** (required): What to match (`parentDir`, `fileName`, `fileStem`)
 - **`maxDepth`** (optional): Maximum number of `../` segments allowed. Use `0` to allow only same-level (and child) relative paths.
 - **`searchScope`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
-- **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.scss"` or `["**/*.scss", "**/*.css"]`)
-
-#### Glob support quick guide
-
-- **`rules[].match`** (minimatch): supports `*` and `{a,b}`.
-- **`transforms[].filePattern`** (rg `--glob`): supports `*` and `{a,b}`.
-- **`transforms[].searchScope`**: `*` is not supported, `{}` is allowed (relative paths only; no `..` or absolute paths).
-- **`relative.filePattern`** (rg `--glob`): supports `*` and `{a,b}`.
-- **`relative.searchScope`**: `*` is not supported, `{}` is allowed (relative paths only; no `..` or absolute paths).
+- **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.scss"`, `"**/*.{scss,css}"` or `["**/*.scss", "**/*.css"]`)
 
 ### `pathsearch.showPickerOnMultiple`
 

@@ -140,7 +140,7 @@ PathSearch は ripgrep を次の順で解決します:
 - **`searchFor`**（必須）: 置換パターン（`$1`, `$2`でキャプチャグループを使用）
 - **`searchAsRegex`**（オプション）: 結果をripgrep検索で正規表現パターンとして使用
 - **`searchScope`**（オプション）: 特定のディレクトリに検索を制限（例: `"src/"` または `["src/", "app/"]`）
-- **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.twig"` または `["**/*.twig", "**/*.html"]`）
+- **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.twig"` や `"**/*.{scss,css}"`、または `["**/*.twig", "**/*.html"]`）
 
 #### `relative`（オブジェクト）
 
@@ -149,15 +149,7 @@ PathSearch は ripgrep を次の順で解決します:
 - **`matchTarget`**（必須）: `parentDir` / `fileName` / `fileStem`
 - **`maxDepth`**（オプション）: `../` の上限。`0` の場合は同じ階層以下のみ許可
 - **`searchScope`**（オプション）: 特定のディレクトリに検索を制限（例: `"src/"` または `["src/", "app/"]`）
-- **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.scss"` または `["**/*.scss", "**/*.css"]`）
-
-#### パターン対応早見表
-
-- **`rules[].match`**（minimatch）: `*` と `{a,b}` をサポート
-- **`transforms[].filePattern`**（rg `--glob`）: `*` と `{a,b}` をサポート
-- **`transforms[].searchScope`**: `*` は不可、`{}` は可（相対パスのみ。`..` や絶対パスは不可）
-- **`relative.filePattern`**（rg `--glob`）: `*` と `{a,b}` をサポート
-- **`relative.searchScope`**: `*` は不可、`{}` は可（相対パスのみ。`..` や絶対パスは不可）
+- **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.scss"` や `"**/*.{scss,css}"`、または `["**/*.scss", "**/*.css"]`）
 
 ### `pathsearch.showPickerOnMultiple`
 
