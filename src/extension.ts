@@ -318,7 +318,11 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
 
   if (locations.length === 0) {
     if (errors.length > 0) {
-      vscode.window.showErrorMessage('Search failed. See Output \u2192 PathSearch for details.');
+      if (errors.length === 1) {
+        vscode.window.showErrorMessage(`Search failed: ${errors[0]}`);
+      } else {
+        vscode.window.showErrorMessage('Search failed with multiple errors. See Output \u2192 PathSearch for details.');
+      }
     } else {
       vscode.window.showWarningMessage('No matches found.');
     }
