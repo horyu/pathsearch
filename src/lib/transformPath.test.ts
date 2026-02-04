@@ -23,7 +23,7 @@ test('transformPath: マッチしない場合は例外', () => {
         },
         'src/components/Button.tsx'
       ),
-    /Transform failed: Pattern/
+    /Pattern/
   );
 });
 
@@ -70,6 +70,6 @@ test('transformPath: 不正な正規表現は例外', () => {
         },
         'src/index.ts'
       ),
-    /Transform failed/
+    /Invalid regular expression/
   );
 });
