@@ -10,6 +10,7 @@
 
 - エントリポイントは `src/extension.ts`。VS Code 依存は `src/*`、純粋ロジックは `src/lib/*` に分割する
 - `src/lib/*` は単体テスト（`*.test.ts`）を追加して検証する
+- エラーメッセージは `src/lib/*` では事象を直接記載し、文脈Prefix（例: `Transform failed:`）は `src/*` 側で付与する
 
 ## テスト
 
