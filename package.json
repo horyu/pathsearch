@@ -2,7 +2,7 @@
   "name": "pathsearch",
   "displayName": "PathSearch",
   "description": "Transform file paths to search queries with customizable patterns and view results in a Peek view",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "horyu",
   "icon": "assets/icon128.png",
   "license": "WTFPL",
