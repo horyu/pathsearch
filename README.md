@@ -182,7 +182,7 @@ Example:
 PathSearch has the following built-in limitations to ensure performance and security:
 
 - **File size limit**: Files larger than 10MB are automatically excluded from search
-- **Matches per file**: Maximum 100 matches per file
+- **Matches per file**: Maximum 100 matches per file (fixed cap separate from maxResults)
 - **Total output limit**: Search terminates if ripgrep output exceeds 5MB
 - **Path restrictions**: `searchScope` only accepts relative paths (no `..` or absolute paths, including `/`)
 
@@ -352,72 +352,15 @@ Note: `searchScope` does not support wildcards. Use `filePattern` to filter file
 
 This limits searches to matching files while keeping the same scope.
 
-### Configuration Example
-
-Configuration example with common options:
-
-```json
-{
-  "pathsearch.rules": [
-    {
-      "name": "React Component",
-      "match": "**/*.tsx",
-      "transforms": [
-        {
-          "extractFrom": ".*/components/(.*)\\.tsx$",
-          "searchFor": "import.*from ['\"].*/$1['\"]",
-          "searchAsRegex": true,
-          "searchScope": "src/" // Search only in src/ directory
-        }
-      ]
-    },
-    {
-      "name": "Backend API",
-      "match": "**/*.ts",
-      "transforms": [
-        {
-          "extractFrom": ".*/api/(.*)\\.ts$",
-          "searchFor": "...",
-          "searchScope": ["src/backend/", "src/api/"] // Multiple directories
-        }
-      ]
-    }
-  ],
-  "pathsearch.showPickerOnMultiple": false,
-  "pathsearch.maxResults": 100,
-  "pathsearch.ripgrepPath": ""
-}
-```
-
-## Advanced Usage
-
-### Peek Workflow
-
-Peek results are perfect for quickly checking where a file is used without losing your place:
-
-1. Open any file in your project
-2. Press `Cmd+Shift+U` (Mac) or `Ctrl+Shift+U` (Windows/Linux)
-3. Results appear inline at your cursor position
-4. Navigate through results with arrow keys
-5. Press `Escape` to close and return to your code
-
 ## Security
 
 PathSearch is designed with security in mind:
-
-### Protected Against
 
 - **Command injection**: Uses secure `spawn` API instead of shell execution
 - **Path traversal**: Validates all file paths to prevent access outside workspace
 - **Resource exhaustion**: Limits output size and result count
 - **Information disclosure**: Sanitizes error messages shown to users
-
-### Security Features
-
-- No arbitrary code execution
-- Input validation on all user-provided patterns
-- Workspace boundary enforcement
-- Secure handling of external commands
+- **Workspace boundary enforcement**: Enforces workspace boundary checks
 
 All search rules can be defined in either workspace or user settings, giving you full control and visibility.
 
