@@ -155,6 +155,11 @@
                       "default": false,
                       "description": "Use the result as a regex pattern in search"
                     },
+                    "allowNoMatch": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Skip this transform when extractFrom does not match"
+                    },
                     "searchScope": {
                       "oneOf": [
                         {

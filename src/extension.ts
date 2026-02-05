@@ -255,12 +255,16 @@ async function runRuleSearch(options: { forcePicker: boolean; showPickerOnMultip
         break;
       }
 
-      let searchQuery: string;
+      let searchQuery: string | null;
       try {
         searchQuery = transformPath(transform, relativeFilePath);
       } catch (error) {
         logError('Transform failed', error);
         errors.push(error instanceof Error ? error.message : String(error));
+        continue;
+      }
+      if (searchQuery === null) {
+        logInfo(`Transform skipped (no match): ${transform.extractFrom}`);
         continue;
       }
 

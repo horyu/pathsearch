@@ -2,6 +2,7 @@ export interface TransformConfig {
   extractFrom: string;
   searchFor: string;
   searchAsRegex?: boolean;
+  allowNoMatch?: boolean;
   searchScope?: string | string[];
   filePattern?: string | string[];
 }

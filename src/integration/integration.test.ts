@@ -98,9 +98,11 @@ test('transform: コンポーネント参照を拾える', () => {
     },
     relativePath
   );
+  assert.notEqual(query, null);
+  const queryText = query ?? '';
 
   const matches = runRipgrep({
-    query,
+    query: queryText,
     isRegex: false,
     searchScope: 'src/integration/fixtures/app',
     filePattern: '**/*.tsx'
@@ -213,15 +215,17 @@ test('transform: 変換結果が空文字でも検索が実行される', () => 
     },
     relativePath
   );
+  assert.notEqual(query, null);
+  const queryText = query ?? '';
 
   const matches = runRipgrep({
-    query,
+    query: queryText,
     isRegex: false,
     searchScope: 'src/integration/fixtures/app',
     filePattern: '**/*.tsx',
     maxResults: 1
   });
 
-  assert.equal(query, '');
+  assert.equal(queryText, '');
   assert.equal(matches.length, 1);
 });

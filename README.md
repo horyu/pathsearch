@@ -139,6 +139,7 @@ Each transform includes:
 - **`extractFrom`** (required): Regular expression to match against workspace-relative file path
 - **`searchFor`** (required): Replacement pattern (use `$1`, `$2` for capture groups)
 - **`searchAsRegex`** (optional): Use the result as a regex pattern in ripgrep search
+- **`allowNoMatch`** (optional): Skip this transform if `extractFrom` does not match
 - **`searchScope`** (optional): Limit search to specific directories (e.g., `"src/"` or `["src/", "app/"]`)
 - **`filePattern`** (optional): Limit search to matching files (e.g., `"**/*.twig"`, `"**/*.{scss,css}"` or `["**/*.twig", "**/*.html"]`)
 
@@ -218,6 +219,29 @@ PathSearch has the following built-in limitations to ensure performance and secu
       "extractFrom": ".*/(?:components|hooks)/(.*)\\.tsx?$",
       "searchFor": "from ['\"].*/$1",
       "searchAsRegex": true
+    }
+  ]
+}
+```
+
+### Optional Transform (allowNoMatch)
+
+Use multiple transforms in one rule and skip non-matching ones:
+
+```json
+{
+  "name": "Components and Hooks",
+  "match": "**/*.{ts,tsx,js,jsx}",
+  "transforms": [
+    {
+      "extractFrom": ".*/components/(.*)\\.(tsx|jsx)$",
+      "searchFor": "from ['\"].*/$1",
+      "allowNoMatch": true
+    },
+    {
+      "extractFrom": ".*/hooks/use(.*)\\.(ts|js)$",
+      "searchFor": "use$1\\(",
+      "allowNoMatch": true
     }
   ]
 }
@@ -330,7 +354,7 @@ This limits searches to matching files while keeping the same scope.
 
 ### Configuration Example
 
-Complete configuration example with all options:
+Configuration example with common options:
 
 ```json
 {

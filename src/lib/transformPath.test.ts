@@ -27,6 +27,18 @@ test('transformPath: マッチしない場合は例外', () => {
   );
 });
 
+test('transformPath: allowNoMatch が true の場合は null を返す', () => {
+  const result = transformPath(
+    {
+      extractFrom: '.*/pages/(.*)\\.tsx$',
+      searchFor: '$1',
+      allowNoMatch: true
+    },
+    'src/components/Button.tsx'
+  );
+  assert.equal(result, null);
+});
+
 test('transformPath: $0 置換に対応', () => {
   const result = transformPath(
     {

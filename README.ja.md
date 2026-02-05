@@ -139,6 +139,7 @@ PathSearch は ripgrep を次の順で解決します:
 - **`extractFrom`**（必須）: ワークスペース相対ファイルパスに対してマッチする正規表現
 - **`searchFor`**（必須）: 置換パターン（`$1`, `$2`でキャプチャグループを使用）
 - **`searchAsRegex`**（オプション）: 結果をripgrep検索で正規表現パターンとして使用
+- **`allowNoMatch`**（オプション）: `extractFrom` がマッチしない場合にこの変換をスキップ
 - **`searchScope`**（オプション）: 特定のディレクトリに検索を制限（例: `"src/"` または `["src/", "app/"]`）
 - **`filePattern`**（オプション）: 対象ファイルを絞り込み（例: `"**/*.twig"` や `"**/*.{scss,css}"`、または `["**/*.twig", "**/*.html"]`）
 
@@ -225,6 +226,29 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 
 **ファイル**: `src/components/Button/Button.tsx`
 **検索クエリ（正規表現）**: `from ['"].*Button/Button`
+
+### Optional Transform（allowNoMatch）
+
+複数の transform を1ルールにまとめて、マッチしないものはスキップします:
+
+```json
+{
+  "name": "Components and Hooks",
+  "match": "**/*.{ts,tsx,js,jsx}",
+  "transforms": [
+    {
+      "extractFrom": ".*/components/(.*)\\.(tsx|jsx)$",
+      "searchFor": "from ['\"].*/$1",
+      "allowNoMatch": true
+    },
+    {
+      "extractFrom": ".*/hooks/use(.*)\\.(ts|js)$",
+      "searchFor": "use$1\\(",
+      "allowNoMatch": true
+    }
+  ]
+}
+```
 
 ### Pythonモジュール
 
@@ -330,7 +354,7 @@ PathSearchは、パフォーマンスとセキュリティを確保するため�
 
 ### 設定例
 
-すべてのオプションを含む完全な設定例:
+主要なオプションを含む設定例:
 
 ```json
 {
